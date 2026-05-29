@@ -3,47 +3,87 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  /* Zero brand — dark surface, off-white type, yellow accent */
-  --background: oklch(0.145 0 0);              /* near black */
-  --foreground: oklch(0.985 0 0);              /* off-white */
+:root,
+html.light {
+  /* Zero brand — light default */
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.18 0 0);
 
-  --card: oklch(0.18 0 0);                     /* elevated surface */
+  --card: oklch(0.99 0 0);
+  --card-foreground: oklch(0.18 0 0);
+  --popover: oklch(0.99 0 0);
+  --popover-foreground: oklch(0.18 0 0);
+
+  /* Zero brand yellow */
+  --primary: #e6c200;
+  --primary-foreground: #ffffff;
+
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.18 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.48 0 0);
+  --accent: #ffd503;
+  --accent-foreground: oklch(0.18 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0 0 0 / 0.08);
+  --input: oklch(0 0 0 / 0.12);
+  --ring: #ffd503;
+
+  --tier-high: oklch(0.72 0.17 95);
+  --tier-high-foreground: oklch(0.18 0 0);
+  --tier-medium: #ffd503e7;
+  --tier-medium-foreground: oklch(0.18 0 0);
+  --tier-low: oklch(0.55 0 0);
+  --tier-low-foreground: oklch(0.99 0 0);
+
+  --grid-dot: oklch(0 0 0 / 0.06);
+
+  --radius: 0.625rem;
+}
+
+:root.dark,
+.dark {
+  /* Zero brand — dark surface, off-white type, yellow accent */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+
+  --card: oklch(0.18 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.18 0 0);
   --popover-foreground: oklch(0.985 0 0);
 
-  /* Zero yellow */
-  --primary: oklch(0.88 0.17 95);              /* ~ #FFD60A */
-  --primary-foreground: oklch(0.18 0 0);
+  --primary: #e6c200;
+  --primary-foreground: #ffffff;
 
-  --secondary: oklch(0.215 0 0);               /* subtle raised */
+  --secondary: oklch(0.215 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.215 0 0);
   --muted-foreground: oklch(0.66 0 0);
-  --accent: oklch(0.88 0.17 95);
+  --accent: #ffd503;
   --accent-foreground: oklch(0.18 0 0);
   --destructive: oklch(0.6 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
 
   --border: oklch(1 0 0 / 0.08);
   --input: oklch(1 0 0 / 0.12);
-  --ring: oklch(0.88 0.17 95);
+  --ring: #ffd503;
 
-  /* Tiers — softer, more brand-aligned */
-  --tier-high: oklch(0.88 0.17 95);            /* yellow */
+  --tier-high: oklch(0.88 0.17 95);
   --tier-high-foreground: oklch(0.18 0 0);
-  --tier-medium: oklch(0.78 0.13 75);          /* warm amber */
+  --tier-medium: #ffd503e7;
   --tier-medium-foreground: oklch(0.18 0 0);
   --tier-low: oklch(0.55 0 0);
   --tier-low-foreground: oklch(0.99 0 0);
 
-  --radius: 0.625rem;
+  --grid-dot: oklch(1 0 0 / 0.06);
 }
 
 @theme inline {
   --font-sans: var(--font-sans), 'Geist Fallback', ui-sans-serif, system-ui;
   --font-mono: var(--font-mono), 'Geist Mono Fallback', ui-monospace, monospace;
+  --font-inter: var(--font-inter), 'Inter', ui-sans-serif, system-ui;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -83,12 +123,33 @@
     @apply border-border outline-ring/50;
   }
   html {
+    color-scheme: light dark;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-inter;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-sans;
     font-feature-settings: 'ss01', 'cv11';
+  }
+  .font-sans {
+    font-feature-settings: 'ss01', 'cv11';
+    letter-spacing: normal;
+  }
+  .font-inter {
+    letter-spacing: -0.02em;
   }
   ::selection {
     background: color-mix(in oklch, var(--primary) 40%, transparent);
@@ -98,6 +159,11 @@
 
 /* Utilities */
 @layer utilities {
+  /* Segmented control: outer radius minus track padding (p-0.5) */
+  .rounded-inset-control {
+    border-radius: calc(var(--radius) - 0.125rem);
+  }
+
   .scanline {
     background-image: linear-gradient(
       90deg,
@@ -116,16 +182,30 @@
   /* Subtle dotted grid à la zero.inc */
   .grid-bg {
     background-image:
-      radial-gradient(circle at 1px 1px, oklch(1 0 0 / 0.06) 1px, transparent 0);
+      radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0);
     background-size: 28px 28px;
     -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
             mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
   }
 
-  .blink {
-    animation: blink 1.1s step-end infinite;
+  @keyframes nudge-right {
+    0%,
+    100% {
+      transform: translateX(-1px);
+      opacity: 0.45;
+    }
+    50% {
+      transform: translateX(2px);
+      opacity: 0.95;
+    }
   }
-  @keyframes blink {
-    50% { opacity: 0; }
+  .animate-nudge-right {
+    animation: nudge-right 1.15s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-nudge-right {
+      animation: none;
+      opacity: 0.7;
+    }
   }
 }

@@ -1,23 +1,24 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useTheme } from "next-themes"
 import { AnimatePresence, motion, LayoutGroup } from "framer-motion"
 import {
+  ArrowDownWideNarrow,
+  ArrowRight,
+  ArrowUpWideNarrow,
   ArrowUpRight,
   ChevronDown,
-  CornerDownLeft,
   Filter,
-  FilterX,
   Info,
-  RotateCcw,
   ScanSearch,
   Search,
   SearchX,
-  Sparkles,
+  MagicWand,
   Undo2,
   Users,
   X,
-} from "lucide-react"
+} from "@/components/icons"
 import {
   HoverCard,
   HoverCardContent,
@@ -29,8 +30,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Kbd } from "@/components/ui/kbd"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ThemeToggle } from "@/components/theme-toggle"
+import { ZeroWordmark } from "@/components/zero-wordmark"
 import { COMPANIES, type Company, type Tier } from "@/lib/data"
+import { resolveSvglLogo } from "@/lib/svgl-logos"
 import { cn } from "@/lib/utils"
 
 type RowState = "pending" | "scanning" | "classified" | "discarded" | "restored"
@@ -42,12 +51,37 @@ type EvalRow = Company & {
 
 type SortKey = "score" | "name" | "employees" | "founded"
 type SortDir = "desc" | "asc"
+type TierFilter = "all" | Tier | "discarded"
 
 const DEFAULT_PROMPT =
   "AI labs founded by alumni of OpenAI, Anthropic, or DeepMind"
 
 // Approx total to display in the "evaluated of" counter, to suggest scale.
 const TOTAL_CANDIDATES = 12_487
+
+const TIERS_IN_ORDER: Tier[] = ["high", "medium", "low"]
+
+const DEFAULT_TIER_SECTIONS_OPEN: Record<Tier, boolean> = {
+  high: true,
+  medium: true,
+  low: true,
+}
+
+function sortEvalRows(
+  list: EvalRow[],
+  sort: { key: SortKey; dir: SortDir },
+) {
+  const dir = sort.dir === "desc" ? -1 : 1
+  return [...list].sort((a, b) => {
+    let va: number | string = a[sort.key] as number | string
+    let vb: number | string = b[sort.key] as number | string
+    if (typeof va === "string") va = va.toLowerCase()
+    if (typeof vb === "string") vb = vb.toLowerCase()
+    if (va < vb) return -1 * dir
+    if (va > vb) return 1 * dir
+    return 0
+  })
+}
 
 export function ProgressiveSearch() {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
@@ -59,13 +93,14 @@ export function ProgressiveSearch() {
   )
   const [evaluatedCount, setEvaluatedCount] = useState(0)
   const [activeIds, setActiveIds] = useState<string[]>([])
-  const [tierFilter, setTierFilter] = useState<Set<Tier>>(
-    () => new Set<Tier>(["high", "medium"]),
+  const [tierSectionsOpen, setTierSectionsOpen] = useState(
+    () => ({ ...DEFAULT_TIER_SECTIONS_OPEN }),
   )
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({
     key: "score",
     dir: "desc",
   })
+  const [tierFilter, setTierFilter] = useState<TierFilter>("all")
   const [showDiscarded, setShowDiscarded] = useState(false)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -88,6 +123,8 @@ export function ProgressiveSearch() {
     setEvaluatedCount(0)
     setActiveIds([])
     setShowDiscarded(false)
+    setTierFilter("all")
+    setTierSectionsOpen({ ...DEFAULT_TIER_SECTIONS_OPEN })
 
     const reset: EvalRow[] = COMPANIES.map((c) => ({ ...c, state: "pending" }))
     setRows(reset)
@@ -159,54 +196,60 @@ export function ProgressiveSearch() {
     )
   }
 
-  const toggleTier = (t: Tier) => {
-    setTierFilter((cur) => {
-      const next = new Set(cur)
-      if (next.has(t)) next.delete(t)
-      else next.add(t)
-      return next
-    })
-  }
+  const survivingRows = useMemo(
+    () =>
+      rows.filter(
+        (r) => r.state === "classified" || r.state === "restored",
+      ),
+    [rows],
+  )
 
-  const counts = useMemo(() => {
-    const c = { high: 0, medium: 0, low: 0, discarded: 0, surviving: 0 }
-    rows.forEach((r) => {
-      if (r.state === "discarded") c.discarded++
-      if (r.state === "classified" || r.state === "restored") {
-        c.surviving++
-        c[r.tier]++
-      }
-    })
-    return c
-  }, [rows])
-
-  const visibleRows = useMemo(() => {
-    const surviving = rows.filter(
-      (r) => r.state === "classified" || r.state === "restored",
-    )
-    const filtered = surviving.filter((r) => tierFilter.has(r.tier))
-    const dir = sort.dir === "desc" ? -1 : 1
-    return [...filtered].sort((a, b) => {
-      let va: number | string = a[sort.key] as number | string
-      let vb: number | string = b[sort.key] as number | string
-      if (typeof va === "string") va = va.toLowerCase()
-      if (typeof vb === "string") vb = vb.toLowerCase()
-      if (va < vb) return -1 * dir
-      if (va > vb) return 1 * dir
-      return 0
-    })
-  }, [rows, tierFilter, sort])
+  const rowsByTier = useMemo(() => {
+    const grouped = {} as Record<Tier, EvalRow[]>
+    for (const tier of TIERS_IN_ORDER) {
+      grouped[tier] = sortEvalRows(
+        survivingRows.filter((r) => r.tier === tier),
+        sort,
+      )
+    }
+    return grouped
+  }, [survivingRows, sort])
 
   const discardedRows = useMemo(
     () => rows.filter((r) => r.state === "discarded"),
     [rows],
   )
 
+  const visibleRows = useMemo(() => {
+    if (tierFilter === "discarded") return discardedRows
+    const flat: EvalRow[] = []
+    for (const tier of TIERS_IN_ORDER) {
+      if (tierFilter !== "all" && tierFilter !== tier) continue
+      if (tierSectionsOpen[tier]) flat.push(...rowsByTier[tier])
+    }
+    return flat
+  }, [rowsByTier, tierSectionsOpen, tierFilter, discardedRows])
+
+  const hasTierResults = TIERS_IN_ORDER.some(
+    (tier) => rowsByTier[tier].length > 0,
+  )
+
+  const showTierSection = (tier: Tier) =>
+    tierFilter === "all" || tierFilter === tier
+
+  const showDiscardedSection =
+    tierFilter === "all" || tierFilter === "discarded"
+
+  const hasVisibleResults =
+    tierFilter === "discarded"
+      ? discardedRows.length > 0
+      : tierFilter === "all"
+        ? hasTierResults || discardedRows.length > 0
+        : rowsByTier[tierFilter].length > 0
+
   const progress = running
     ? Math.min(100, (evaluatedCount / COMPANIES.length) * 100)
-    : done
-      ? 100
-      : 0
+    : 0
 
   const fakeEvaluated = Math.round(
     (evaluatedCount / COMPANIES.length) * TOTAL_CANDIDATES,
@@ -280,7 +323,7 @@ export function ProgressiveSearch() {
         <section className="mt-8">
           <div
             className={cn(
-              "group relative rounded-xl border bg-card shadow-sm transition-colors",
+              "group relative rounded-xl border bg-card transition-colors",
               running ? "border-primary/40" : "border-border",
             )}
           >
@@ -293,7 +336,7 @@ export function ProgressiveSearch() {
                 onKeyDown={onKey}
                 rows={1}
                 placeholder="Describe what you're looking for…"
-                className="flex h-10 flex-1 resize-none items-center bg-transparent py-2.5 text-base leading-6 outline-none placeholder:text-muted-foreground/70"
+                className="flex h-10 flex-1 resize-none items-center bg-transparent py-2.5 text-base leading-5 outline-none placeholder:text-muted-foreground/70"
               />
               <div className="flex shrink-0 items-center gap-2">
                 {running ? (
@@ -305,48 +348,52 @@ export function ProgressiveSearch() {
                       setDone(true)
                       setActiveIds([])
                     }}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border bg-secondary px-3.5 font-mono text-xs text-secondary-foreground transition hover:bg-muted"
+                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-muted/50 px-3 font-inter text-[11px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-muted hover:text-foreground"
                   >
-                    <X className="size-3.5" />
+                    <X className="size-3 opacity-70" />
                     Stop
                   </button>
                 ) : null}
                 <button
                   type="button"
                   onClick={submit}
-                  className="inline-flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 font-mono text-xs font-medium text-primary-foreground transition hover:opacity-90"
+                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md bg-black px-2.5 font-inter text-[11px] font-medium text-white transition hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
                 >
-                  <Sparkles className="size-3.5" />
+                  <MagicWand className="size-3 text-current" />
                   {running ? "Re-run" : done ? "Run again" : "Run"}
-                  <kbd className="ml-1 inline-flex items-center gap-0.5 rounded border border-primary-foreground/25 bg-primary-foreground/10 px-1 py-0.5 text-[10px] leading-none">
-                    <CornerDownLeft className="size-2.5" />
-                  </kbd>
                 </button>
               </div>
             </div>
 
-            {/* Scanline */}
+            {/* Progress rule — primary fill only while evaluating */}
             <div className="relative h-px overflow-hidden bg-border">
               <AnimatePresence>
                 {running && (
-                  <motion.div
-                    key="scan"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 scanline"
-                  />
+                  <>
+                    <motion.div
+                      key="scan"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 scanline"
+                    />
+                    <motion.div
+                      key="fill"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute left-0 top-0 h-full bg-primary transition-[width] duration-300 ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </>
                 )}
               </AnimatePresence>
-              <div
-                className="absolute left-0 top-0 h-full bg-primary transition-[width] duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
             </div>
 
             {/* Status bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 font-mono text-[11px] text-muted-foreground">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 font-inter text-[11px] text-muted-foreground">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
                 <span className="inline-flex items-center gap-1.5">
                   <span
                     className={cn(
@@ -354,24 +401,22 @@ export function ProgressiveSearch() {
                       running
                         ? "bg-primary animate-pulse"
                         : done
-                          ? "bg-primary"
+                          ? "bg-emerald-500"
                           : "bg-muted-foreground/40",
                     )}
                   />
-                  {running ? "evaluating" : done ? "complete" : "idle"}
-                </span>
-                <span className="hidden sm:inline-block h-3 w-px bg-border" />
-                <span>
-                  {fakeEvaluated.toLocaleString()} /{" "}
-                  {TOTAL_CANDIDATES.toLocaleString()} candidates
+                  {running ? "Evaluating" : done ? "Complete" : "Idle"}
                 </span>
                 {activeIds.length > 0 && (
                   <>
-                    <span className="hidden md:inline-block h-3 w-px bg-border" />
-                    <span className="hidden md:inline-flex items-center gap-1.5">
-                      <span className="text-foreground/70">→</span>
+                    <span className="hidden sm:inline-block h-3 w-px bg-border" />
+                    <span className="hidden md:inline-flex min-w-0 items-center gap-1.5">
+                      <ArrowRight
+                        className="size-3 shrink-0 text-foreground/70 animate-nudge-right"
+                        aria-hidden
+                      />
                       <span className="truncate">
-                        scanning{" "}
+                        Scanning{" "}
                         {activeIds
                           .map(
                             (id) => rows.find((r) => r.id === id)?.name ?? "",
@@ -379,123 +424,84 @@ export function ProgressiveSearch() {
                           .filter(Boolean)
                           .join(", ")}
                       </span>
-                      <span className="blink">▍</span>
                     </span>
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-3">
-                <Counter label="HIGH" value={counts.high} tier="high" />
-                <Counter label="MED" value={counts.medium} tier="medium" />
-                <Counter
-                  label="DROP"
-                  value={counts.discarded}
-                  tier="low"
-                  muted
-                />
-              </div>
+              <span className="shrink-0 tabular-nums">
+                {fakeEvaluated.toLocaleString()} /{" "}
+                {TOTAL_CANDIDATES.toLocaleString()} Candidates
+              </span>
             </div>
           </div>
         </section>
 
         {/* Toolbar */}
-        <section className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 pr-1 font-mono text-[11px] text-muted-foreground">
-              <Filter className="size-3" />
-              filter
-            </span>
-            <TierChip
-              tier="high"
-              active={tierFilter.has("high")}
-              count={counts.high}
-              onClick={() => toggleTier("high")}
-            />
-            <TierChip
-              tier="medium"
-              active={tierFilter.has("medium")}
-              count={counts.medium}
-              onClick={() => toggleTier("medium")}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <SortControl sort={sort} onChange={setSort} />
-            <button
-              type="button"
-              onClick={() => startSearch(prompt)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 font-mono text-[11px] text-muted-foreground transition hover:text-foreground hover:bg-secondary"
-            >
-              <RotateCcw className="size-3.5" />
-              re-run
-            </button>
-          </div>
+        <section className="mt-6 flex items-center justify-between gap-4">
+          <FilterControl
+            value={tierFilter}
+            onChange={setTierFilter}
+            hasLowRows={rowsByTier.low.length > 0}
+          />
+          <SortControl sort={sort} onChange={setSort} />
         </section>
 
         {/* Results list */}
-        <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-          {/* column header */}
-          <div className="grid grid-cols-12 gap-4 border-b border-border bg-secondary/60 px-5 py-3 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-            <div className="col-span-1">tier</div>
-            <div className="col-span-4 md:col-span-3">company</div>
-            <div className="col-span-7 md:col-span-6">match · reasoning</div>
-            <div className="hidden md:col-span-2 md:block text-right">
-              meta
+        <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
+          {hasVisibleResults && tierFilter !== "discarded" && (
+            <div className="grid grid-cols-12 gap-x-4 gap-y-1 border-b border-border bg-secondary/50 px-5 py-2.5 font-inter text-[11px] font-medium text-muted-foreground">
+              <div className="col-span-12 md:col-span-4">Company</div>
+              <div className="col-span-12 md:col-span-4">Match · reasoning</div>
+              <div className="hidden md:col-span-2 md:block">Signals</div>
+              <div className="hidden md:col-span-2 md:block text-right">Meta</div>
             </div>
+          )}
+
+          <div className="divide-y divide-border">
+            <LayoutGroup>
+              {TIERS_IN_ORDER.map((tier) => {
+                if (!showTierSection(tier)) return null
+                const tierRows = rowsByTier[tier]
+                if (tierRows.length === 0) return null
+                return (
+                  <TierResultsSection
+                    key={tier}
+                    tier={tier}
+                    open={tierSectionsOpen[tier]}
+                    onToggle={() =>
+                      setTierSectionsOpen((cur) => ({
+                        ...cur,
+                        [tier]: !cur[tier],
+                      }))
+                    }
+                    rows={tierRows}
+                    selectedId={selectedId}
+                    hoverId={hoverId}
+                    onSelect={setSelectedId}
+                    onHover={setHoverId}
+                  />
+                )
+              })}
+            </LayoutGroup>
+
+            {showDiscardedSection && (
+              <DiscardedDrawer
+                open={tierFilter === "discarded" ? true : showDiscarded}
+                onToggle={() => {
+                  if (tierFilter === "discarded") return
+                  setShowDiscarded((s) => !s)
+                }}
+                rows={discardedRows}
+                onRestore={restoreRow}
+                pinnedOpen={tierFilter === "discarded"}
+              />
+            )}
           </div>
 
-          <LayoutGroup>
-            <ul className="divide-y divide-border">
-              <AnimatePresence mode="popLayout" initial={false}>
-                {visibleRows.map((row) => (
-                  <motion.li
-                    key={row.id}
-                    layout
-                    data-row-id={row.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{
-                      layout: { type: "spring", stiffness: 400, damping: 36 },
-                      opacity: { duration: 0.18 },
-                      y: { duration: 0.18 },
-                    }}
-                    onMouseEnter={() => setHoverId(row.id)}
-                    onMouseLeave={() => setHoverId(null)}
-                    onClick={() => setSelectedId(row.id)}
-                    className={cn(
-                      "group relative grid cursor-default grid-cols-12 gap-4 px-5 py-4 outline-none transition-colors",
-                      "hover:bg-secondary/60",
-                      selectedId === row.id
-                        ? "bg-secondary/80 ring-1 ring-inset ring-primary/50"
-                        : hoverId === row.id && "bg-secondary/60",
-                    )}
-                  >
-                    {selectedId === row.id && (
-                      <span className="absolute inset-y-0 left-0 w-0.5 bg-primary" />
-                    )}
-                    <Row row={row} />
-                  </motion.li>
-                ))}
-              </AnimatePresence>
-            </ul>
-          </LayoutGroup>
-
           {/* Empty states */}
-          {visibleRows.length === 0 &&
+          {!hasVisibleResults &&
             (running ? (
               <ScanningPlaceholder activeName={activeName} />
-            ) : counts.surviving > 0 ? (
-              <EmptyState
-                icon={FilterX}
-                title="No results match your filters"
-                body={`${counts.surviving} ${
-                  counts.surviving === 1 ? "company is" : "companies are"
-                } hidden by the active tier filter.`}
-                action={{
-                  label: "Show all tiers",
-                  onClick: () => setTierFilter(new Set<Tier>(["high", "medium"])),
-                }}
-              />
             ) : (
               <EmptyState
                 icon={SearchX}
@@ -508,26 +514,8 @@ export function ProgressiveSearch() {
               />
             ))}
 
-          {/* Discarded drawer */}
-          <DiscardedDrawer
-            open={showDiscarded}
-            onToggle={() => setShowDiscarded((s) => !s)}
-            rows={discardedRows}
-            onRestore={restoreRow}
-          />
         </section>
 
-        {/* Footer hint */}
-        <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] text-muted-foreground">
-          <span className="text-muted-foreground/70">
-            refine, sort, or filter mid-pass — results re-rank live.
-          </span>
-          <span className="flex items-center gap-2">
-            <KeyHint keys={["J", "K"]} label="navigate" />
-            <KeyHint keys={["↵"]} label="open" />
-            <KeyHint keys={["/"]} label="search" />
-          </span>
-        </div>
       </div>
     </main>
     </TooltipProvider>
@@ -538,30 +526,15 @@ export function ProgressiveSearch() {
 
 function Header() {
   return (
-    <header className="flex items-center justify-between">
+    <header className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2.5">
-        {/* Official Zero brand mark from zero.inc */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/zero-logo-dark.png"
-          alt="Zero"
-          width={28}
-          height={28}
-          className="size-7 rounded-lg"
-        />
-        <span className="text-[15px] font-semibold tracking-tight text-foreground">
-          Zero
-        </span>
+        <ZeroWordmark />
         <span className="mx-0.5 h-4 w-px bg-border" />
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="font-inter text-[11px] uppercase text-muted-foreground">
           progressive search
         </span>
       </div>
-      <div className="hidden items-center gap-3 font-mono text-[11px] text-muted-foreground md:flex">
-        <span>v0.1</span>
-        <span className="size-1 rounded-full bg-muted-foreground/40" />
-        <span>{TOTAL_CANDIDATES.toLocaleString()} candidates</span>
-      </div>
+      <ThemeToggle />
     </header>
   )
 }
@@ -569,19 +542,6 @@ function Header() {
 function BackgroundGrid() {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] grid-bg opacity-50" />
-  )
-}
-
-function KeyHint({ keys, label }: { keys: string[]; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="inline-flex items-center gap-0.5">
-        {keys.map((k) => (
-          <Kbd key={k}>{k}</Kbd>
-        ))}
-      </span>
-      <span className="text-muted-foreground/70">{label}</span>
-    </span>
   )
 }
 
@@ -607,7 +567,9 @@ function EmptyState({
         <span className="absolute inset-0 rounded-xl bg-primary/5" />
         <Icon className="size-5 text-muted-foreground" />
       </div>
-      <h3 className="text-sm font-medium text-foreground">{title}</h3>
+      <h3 className="font-sans text-sm font-semibold tracking-tight text-foreground">
+        {title}
+      </h3>
       <p className="mt-1.5 max-w-sm text-pretty text-[13px] leading-relaxed text-muted-foreground">
         {body}
       </p>
@@ -615,7 +577,7 @@ function EmptyState({
         <button
           type="button"
           onClick={action.onClick}
-          className="mt-4 inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-3 font-mono text-[11px] text-foreground transition hover:bg-secondary"
+          className="mt-4 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-3 font-inter text-[11px] text-foreground transition hover:bg-secondary"
         >
           {action.label}
         </button>
@@ -627,10 +589,10 @@ function EmptyState({
 function ScanningPlaceholder({ activeName }: { activeName: string | null }) {
   return (
     <div className="px-5 py-8">
-      <div className="flex items-center justify-center gap-2 pb-6 font-mono text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-center gap-2 pb-6 font-inter text-[11px] text-muted-foreground">
         <ScanSearch className="size-3.5 text-primary" />
         <span>
-          evaluating candidates
+          Evaluating candidates
           {activeName ? (
             <>
               {" · "}
@@ -638,7 +600,6 @@ function ScanningPlaceholder({ activeName }: { activeName: string | null }) {
             </>
           ) : null}
         </span>
-        <span className="blink text-primary">▍</span>
       </div>
       <ul className="space-y-3" aria-hidden>
         {[0, 1, 2].map((i) => (
@@ -665,86 +626,223 @@ function ScanningPlaceholder({ activeName }: { activeName: string | null }) {
   )
 }
 
-function Counter({
-  label,
-  value,
-  tier,
-  muted,
-}: {
-  label: string
-  value: number
-  tier: Tier
-  muted?: boolean
-}) {
-  const color =
-    tier === "high"
-      ? "text-tier-high"
-      : tier === "medium"
-        ? "text-tier-medium"
-        : "text-muted-foreground"
+function tierSectionHint(tier: Tier) {
+  return tier === "high"
+    ? "Strong fit for this prompt"
+    : tier === "medium"
+      ? "Partial or indirect alignment"
+      : "Weak signal — review before acting"
+}
+
+function tierDotClass(tier: Tier) {
+  return tier === "high"
+    ? "bg-emerald-500"
+    : tier === "medium"
+      ? "bg-tier-medium"
+      : "bg-muted-foreground"
+}
+
+function TierSectionLabel({ tier }: { tier: Tier }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 tabular-nums",
-        muted && "opacity-70",
+        "inline-flex h-5 items-center gap-1.5 rounded-full border px-1.5 py-0 font-inter text-[10px] font-medium leading-none",
+        tier === "high" &&
+          "border-emerald-500/15 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
+        tier === "medium" &&
+          "border-yellow-500/15 bg-yellow-500/5 text-yellow-600 dark:text-yellow-400",
+        tier === "low" && "border-border bg-muted/60 text-muted-foreground",
       )}
     >
-      <span className={cn("size-1.5 rounded-full", `bg-current ${color}`)} />
-      <span className="text-muted-foreground">{label}</span>
-      <motion.span
-        key={value}
-        initial={{ y: -4, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="text-foreground"
-      >
-        {value}
-      </motion.span>
+      <span
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          tier === "high" && "bg-emerald-500",
+          tier === "medium" && "bg-yellow-500",
+          tier === "low" && "bg-muted-foreground",
+        )}
+        aria-hidden
+      />
+      {tierLabel(tier)}
     </span>
   )
 }
 
-function TierChip({
+function TierResultsSection({
   tier,
-  active,
-  count,
-  onClick,
+  open,
+  onToggle,
+  rows,
+  selectedId,
+  hoverId,
+  onSelect,
+  onHover,
 }: {
   tier: Tier
-  active: boolean
-  count: number
-  onClick: () => void
+  open: boolean
+  onToggle: () => void
+  rows: EvalRow[]
+  selectedId: string | null
+  hoverId: string | null
+  onSelect: (id: string) => void
+  onHover: (id: string | null) => void
 }) {
-  const styles =
-    tier === "high"
-      ? {
-          dot: "bg-tier-high",
-          on: "border-tier-high/20 bg-tier-high/8 text-foreground",
-        }
-      : tier === "medium"
-        ? {
-            dot: "bg-tier-medium",
-            on: "border-tier-medium/20 bg-tier-medium/8 text-foreground",
-          }
-        : {
-            dot: "bg-muted-foreground",
-            on: "border-border bg-secondary text-foreground",
-          }
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="group flex w-full cursor-pointer items-center justify-between bg-secondary/50 px-5 py-3 font-inter text-[11px] text-muted-foreground transition hover:bg-secondary/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      >
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <ChevronDown
+            className={cn(
+              "size-3.5 shrink-0 text-[#777] transition-transform",
+              open ? "rotate-0" : "-rotate-90",
+            )}
+          />
+          <TierSectionLabel tier={tier} />
+          <span className="tabular-nums text-muted-foreground">· {rows.length}</span>
+          <span className="hidden text-muted-foreground/60 sm:inline">
+            ({tierSectionHint(tier)})
+          </span>
+        </span>
+        <span className="shrink-0 text-muted-foreground/70 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+          {open ? "Hide" : "Show"}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="tier-rows"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <ul className="divide-y divide-border">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {rows.map((row) => (
+                  <motion.li
+                    key={row.id}
+                    layout
+                    data-row-id={row.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{
+                      layout: { type: "spring", stiffness: 400, damping: 36 },
+                      opacity: { duration: 0.16 },
+                      y: { duration: 0.16 },
+                    }}
+                    onMouseEnter={() => onHover(row.id)}
+                    onMouseLeave={() => onHover(null)}
+                    onClick={() => onSelect(row.id)}
+                    className={cn(
+                      "group relative grid cursor-pointer grid-cols-12 gap-x-4 gap-y-2 px-5 py-3.5 outline-none transition-colors md:gap-y-0",
+                      "hover:bg-secondary/50",
+                      selectedId === row.id
+                        ? "bg-secondary/70"
+                        : hoverId === row.id && "bg-secondary/50",
+                    )}
+                  >
+                    {selectedId === row.id && (
+                      <span className="absolute inset-y-0 left-0 w-0.5 bg-primary" />
+                    )}
+                    <Row row={row} />
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+type FilterOption = {
+  key: TierFilter
+  label: string
+  dotClass?: string
+}
+
+function filterOptions(hasLowRows: boolean): FilterOption[] {
+  return [
+    { key: "all", label: "All" },
+    { key: "high", label: "High", dotClass: "bg-emerald-500" },
+    { key: "medium", label: "Medium", dotClass: "bg-tier-medium" },
+    ...(hasLowRows
+      ? [{ key: "low" as const, label: "Low", dotClass: "bg-muted-foreground" }]
+      : []),
+    {
+      key: "discarded",
+      label: "Discarded",
+      dotClass: "bg-muted-foreground/40",
+    },
+  ]
+}
+
+function FilterControl({
+  value,
+  onChange,
+  hasLowRows,
+}: {
+  value: TierFilter
+  onChange: (value: TierFilter) => void
+  hasLowRows: boolean
+}) {
+  const options = filterOptions(hasLowRows)
+  const selected = options.find((o) => o.key === value) ?? options[0]
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-7 items-center gap-2 rounded-full border px-3 font-mono text-[11px] transition",
-        active
-          ? styles.on
-          : "border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary",
-      )}
-    >
-      <span className={cn("size-1.5 rounded-full", styles.dot)} />
-      <span className="uppercase tracking-wide">{tier}</span>
-      <span className="tabular-nums text-foreground/80">{count}</span>
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Filter: ${selected.label}`}
+          className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border bg-white px-2.5 font-inter text-[11px] text-foreground transition-colors hover:bg-secondary/40 dark:bg-card"
+        >
+          <Filter className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="inline-flex items-center gap-1.5 font-medium">
+            {selected.dotClass && (
+              <span
+                className={cn("size-1.5 shrink-0 rounded-full", selected.dotClass)}
+                aria-hidden
+              />
+            )}
+            {selected.label}
+          </span>
+          <ChevronDown className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="min-w-[9.5rem] font-inter text-[11px]"
+      >
+        {options.map((o) => (
+          <DropdownMenuItem
+            key={o.key}
+            onSelect={() => onChange(o.key)}
+            className={cn(
+              "cursor-pointer gap-2 py-1.5 text-[11px] focus:bg-secondary/60 focus:text-foreground",
+              value === o.key && "bg-secondary/60 font-medium",
+            )}
+          >
+            {o.dotClass ? (
+              <span
+                className={cn("size-1.5 shrink-0 rounded-full", o.dotClass)}
+                aria-hidden
+              />
+            ) : (
+              <span className="size-1.5 shrink-0" aria-hidden />
+            )}
+            {o.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -756,65 +854,111 @@ function SortControl({
   onChange: (s: { key: SortKey; dir: SortDir }) => void
 }) {
   const opts: { key: SortKey; label: string }[] = [
-    { key: "score", label: "match" },
-    { key: "name", label: "name" },
-    { key: "employees", label: "size" },
-    { key: "founded", label: "founded" },
+    { key: "score", label: "Match" },
+    { key: "name", label: "Name" },
+    { key: "employees", label: "Size" },
+    { key: "founded", label: "Founded" },
   ]
   return (
-    <div className="inline-flex h-8 items-center gap-0.5 rounded-md border border-border bg-card p-0.5 font-mono text-[11px]">
-      {opts.map((o) => (
-        <button
-          key={o.key}
-          onClick={() =>
-            onChange({
-              key: o.key,
-              dir:
-                sort.key === o.key
-                  ? sort.dir === "desc"
-                    ? "asc"
-                    : "desc"
-                  : o.key === "name"
-                    ? "asc"
-                    : "desc",
-            })
-          }
-          className={cn(
-            "inline-flex h-7 items-center gap-1 rounded px-2.5 transition",
-            sort.key === o.key
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {o.label}
-          {sort.key === o.key && (
-            <ChevronDown
-              className={cn(
-                "size-3 transition-transform",
-                sort.dir === "asc" && "rotate-180",
-              )}
-            />
-          )}
-        </button>
-      ))}
+    <div
+      role="group"
+      aria-label="Sort by"
+      className="inline-flex h-8 items-center gap-0.5 rounded-md border border-border bg-white p-0.5 font-inter text-[11px] dark:bg-card"
+    >
+      {opts.map((o) => {
+        const selected = sort.key === o.key
+        return (
+          <button
+            key={o.key}
+            type="button"
+            aria-pressed={selected}
+            onClick={() =>
+              onChange({
+                key: o.key,
+                dir:
+                  selected
+                    ? sort.dir === "desc"
+                      ? "asc"
+                      : "desc"
+                    : o.key === "name"
+                      ? "asc"
+                      : "desc",
+              })
+            }
+            className={cn(
+              "inline-flex h-full cursor-pointer items-center gap-1 rounded-inset-control px-2.5 transition-colors duration-150",
+              selected
+                ? "bg-muted/60 font-medium text-foreground"
+                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+            )}
+          >
+            {o.label}
+            {selected &&
+              (sort.dir === "asc" ? (
+                <ArrowUpWideNarrow
+                  className="size-3 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+              ) : (
+                <ArrowDownWideNarrow
+                  className="size-3 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+              ))}
+          </button>
+        )
+      })}
     </div>
   )
 }
 
-// Official company logos via free, key-less, open icon endpoints.
-// Chain: DuckDuckGo (best marks) → Google favicons (full coverage) → initials.
-function logoSources(domain: string) {
+// Logo chain: SVGL (https://svgl.app) when mapped → Google favicons → DuckDuckGo → initials.
+function logoSources(domain: string, svglUrl: string | null) {
   return [
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+    ...(svglUrl ? [svglUrl] : []),
     `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
+    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
   ]
 }
 
+function isLogoImageUsable(img: HTMLImageElement, src: string) {
+  if (/\.svg($|\?)/i.test(src)) return true
+  return img.naturalWidth > 0 && img.naturalHeight > 0
+}
+
 function Logo({ domain, name, size = 36 }: { domain: string; name: string; size?: number }) {
-  const sources = useMemo(() => logoSources(domain), [domain])
+  const { resolvedTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  const colorScheme = mounted && resolvedTheme === "dark" ? "dark" : "light"
+  const svglUrl = resolveSvglLogo(domain, colorScheme)
+  const sources = useMemo(() => logoSources(domain, svglUrl), [domain, svglUrl])
   const [idx, setIdx] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
   const exhausted = idx >= sources.length
+  const src = exhausted ? null : sources[idx]
+
+  useEffect(() => {
+    setIdx(0)
+    setLoaded(false)
+  }, [domain, svglUrl])
+
+  const advanceOrShow = (img: HTMLImageElement, currentSrc: string) => {
+    if (isLogoImageUsable(img, currentSrc)) {
+      setLoaded(true)
+      return
+    }
+    setLoaded(false)
+    setIdx((i) => i + 1)
+  }
+
+  useLayoutEffect(() => {
+    const img = imgRef.current
+    if (!img || !src || !img.complete) return
+    advanceOrShow(img, src)
+  }, [src, idx, domain, svglUrl])
 
   const initials = name
     .split(/[\s.-]+/)
@@ -825,36 +969,32 @@ function Logo({ domain, name, size = 36 }: { domain: string; name: string; size?
 
   return (
     <div
-      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-secondary"
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/50 bg-secondary"
       style={{ width: size, height: size }}
       aria-hidden
     >
       {/* initials sit underneath as the resting/fallback layer */}
-      <span className="absolute font-mono text-[11px] font-medium text-muted-foreground">
+      <span className="absolute font-inter text-[11px] font-medium text-muted-foreground">
         {initials || "·"}
       </span>
-      {!exhausted && (
+      {src && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          key={sources[idx]}
-          src={sources[idx] || "/placeholder.svg"}
+          ref={imgRef}
+          key={src}
+          src={src}
           alt=""
           width={size}
           height={size}
           loading="lazy"
+          decoding="async"
           className={cn(
             "relative size-full bg-background object-contain p-1 transition-opacity duration-300",
             loaded ? "opacity-100" : "opacity-0",
           )}
           onLoad={(e) => {
-            // Google returns a 16px generic globe for unknown domains; keep it,
-            // but treat truly tiny/empty responses as a miss.
-            const img = e.currentTarget
-            if (img.naturalWidth <= 1) {
-              setIdx((i) => i + 1)
-              return
-            }
-            setLoaded(true)
+            if (!src) return
+            advanceOrShow(e.currentTarget, src)
           }}
           onError={() => {
             setLoaded(false)
@@ -877,33 +1017,52 @@ function tierLabel(tier: Tier) {
 
 function tierClasses(tier: Tier) {
   return tier === "high"
-    ? "text-tier-high"
+    ? "text-emerald-600 dark:text-emerald-400"
     : tier === "medium"
       ? "text-tier-medium"
       : "text-muted-foreground"
 }
 
+function scoreTierDotClass(tier: Tier) {
+  return tier === "high"
+    ? "bg-emerald-500"
+    : tier === "medium"
+      ? "bg-tier-medium"
+      : "bg-muted-foreground"
+}
+
 function ScoreBreakdown({ row }: { row: EvalRow }) {
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-4">
-        <span className={cn("font-mono text-[11px] uppercase tracking-wide", tierClasses(row.tier))}>
-          {tierLabel(row.tier)}
-        </span>
-        <span className="font-mono text-xs tabular-nums text-foreground">
-          {row.score}
-          <span className="text-muted-foreground">/100</span>
-        </span>
+    <div className="w-72 max-w-[min(100vw-2rem,18rem)]">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={cn("size-2 shrink-0 rounded-full", scoreTierDotClass(row.tier))}
+            aria-hidden
+          />
+          <span className={cn("font-inter text-xs font-medium", tierClasses(row.tier))}>
+            {tierLabel(row.tier)}
+          </span>
+        </div>
+        <p className="shrink-0 font-inter font-semibold leading-none tabular-nums text-foreground">
+          <span className="text-[17px]">{row.score}</span>
+          <span className="text-xs font-normal text-muted-foreground">/100</span>
+        </p>
       </div>
-      <p className="text-[12px] leading-relaxed text-muted-foreground">
-        {row.reasoning}
-      </p>
+      <div className="px-3 py-2.5">
+        <p className="font-inter text-[11px] font-medium uppercase text-muted-foreground">
+          Match summary
+        </p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-foreground/90">
+          {row.reasoning}
+        </p>
+      </div>
       {row.signals.length > 0 && (
-        <div className="flex flex-wrap gap-1 pt-0.5">
+        <div className="flex flex-wrap gap-1 border-t border-border bg-muted/40 px-3 py-2 dark:bg-muted/20">
           {row.signals.map((s) => (
             <span
               key={s}
-              className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+              className="inline-flex items-center rounded-md border border-border bg-background px-1.5 py-0.5 font-inter text-[10px] text-muted-foreground"
             >
               {s}
             </span>
@@ -928,22 +1087,21 @@ function CompanyHoverCard({ row }: { row: EvalRow }) {
         <Logo domain={row.domain} name={row.name} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium text-foreground">{row.name}</span>
-            <span className={cn("font-mono text-[10px] uppercase tracking-wide", tierClasses(row.tier))}>
-              {row.tier}
+            <span className="truncate font-sans font-medium text-foreground">
+              {row.name}
             </span>
           </div>
           <a
             href={`https://${row.domain}`}
             target="_blank"
             rel="noreferrer"
-            className="mt-0.5 inline-flex items-center font-mono text-[11px] text-muted-foreground hover:text-foreground"
+            className="mt-0.5 inline-flex items-center font-inter text-[11px] text-muted-foreground hover:text-foreground"
           >
             {row.domain}
             <ArrowUpRight className="ml-0.5 size-3" />
           </a>
         </div>
-        <span className="shrink-0 font-mono text-sm tabular-nums text-foreground">
+        <span className="shrink-0 font-inter text-sm tabular-nums text-foreground">
           {row.score}
         </span>
       </div>
@@ -952,7 +1110,7 @@ function CompanyHoverCard({ row }: { row: EvalRow }) {
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
           {meta.map((m) => (
             <div key={m.label} className="min-w-0">
-              <dt className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+              <dt className="font-inter text-[10px] uppercase text-muted-foreground">
                 {m.label}
               </dt>
               <dd className="truncate text-[12px] text-foreground">{m.value}</dd>
@@ -965,102 +1123,87 @@ function CompanyHoverCard({ row }: { row: EvalRow }) {
 }
 
 function Row({ row }: { row: EvalRow }) {
-  const tierColor =
-    row.tier === "high"
-      ? "text-tier-high"
-      : row.tier === "medium"
-        ? "text-tier-medium"
-        : "text-muted-foreground"
-
-  const tierDot =
-    row.tier === "high"
-      ? "bg-tier-high"
-      : row.tier === "medium"
-        ? "bg-tier-medium"
-        : "bg-muted-foreground"
-
   return (
     <>
-      {/* tier */}
-      <div className="col-span-1 flex items-center">
-        <div className="flex items-center gap-2">
-          <span className={cn("size-2 rounded-full", tierDot)} />
-          <span className={cn("font-mono text-[11px] uppercase font-medium", tierColor)}>
-            {row.tier}
-          </span>
-        </div>
-      </div>
-
-      {/* company */}
-      <div className="col-span-4 md:col-span-3 min-w-0">
-        <HoverCard openDelay={120} closeDelay={80}>
-          <HoverCardTrigger asChild>
-            <div className="flex w-fit max-w-full items-center gap-3">
-              <Logo domain={row.domain} name={row.name} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="truncate font-medium text-foreground decoration-dotted underline-offset-4 group-hover:underline">
+      <div className="col-span-12 flex min-w-0 items-start gap-3 md:col-span-4">
+        <Logo domain={row.domain} name={row.name} />
+        <div className="min-w-0 flex-1">
+          <HoverCard openDelay={120} closeDelay={80}>
+            <HoverCardTrigger asChild>
+              <div className="min-w-0 cursor-pointer">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="truncate font-sans text-sm font-medium text-foreground decoration-dotted underline-offset-4 group-hover:underline">
                     {row.name}
                   </span>
-                  <a
-                    href={`https://${row.domain}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="inline-flex items-center font-mono text-[11px] text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-foreground"
-                  >
-                    {row.domain}
-                    <ArrowUpRight className="ml-0.5 size-3" />
-                  </a>
                 </div>
-                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                <p className="mt-0.5 truncate font-inter text-[11px] text-muted-foreground">
                   {row.tagline}
                 </p>
               </div>
-            </div>
-          </HoverCardTrigger>
-          <CompanyHoverCard row={row} />
-        </HoverCard>
-      </div>
-
-      {/* match + reasoning */}
-      <div className="col-span-7 md:col-span-6 min-w-0">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex w-fit max-w-full cursor-help items-center gap-3">
-              <ScoreBar score={row.score} tier={row.tier} />
-              <span className="inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums text-foreground">
-                {row.score}
-                <Info className="size-3 text-muted-foreground/60" />
-              </span>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="top" align="start" className="max-w-xs">
-            <ScoreBreakdown row={row} />
-          </TooltipContent>
-        </Tooltip>
-        <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-foreground/80">
-          {row.reasoning}
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {row.signals.map((s) => (
-            <span
-              key={s}
-              className="inline-flex items-center rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
-            >
-              {s}
-            </span>
-          ))}
+            </HoverCardTrigger>
+            <CompanyHoverCard row={row} />
+          </HoverCard>
+          <a
+            href={`https://${row.domain}`}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-1 inline-flex cursor-pointer items-center font-inter text-[11px] text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-foreground"
+          >
+            {row.domain}
+            <ArrowUpRight className="ml-0.5 size-3" />
+          </a>
         </div>
       </div>
 
-      {/* meta */}
-      <div className="hidden md:col-span-2 md:flex flex-col items-end justify-center gap-0.5 font-mono text-[11px] text-muted-foreground">
+      <div className="col-span-12 min-w-0 md:col-span-4">
+        <div className="flex items-center gap-3">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex min-w-0 flex-1 cursor-help items-center gap-2.5">
+                <span className="shrink-0 font-inter text-sm font-medium tabular-nums text-foreground">
+                  {row.score}
+                </span>
+                <ScoreBar score={row.score} tier={row.tier} />
+                <Info className="size-3 shrink-0 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              align="start"
+              sideOffset={8}
+              className="w-auto overflow-hidden rounded-lg border border-border bg-popover p-0 text-popover-foreground shadow-lg"
+            >
+              <ScoreBreakdown row={row} />
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-foreground/85">
+          {row.reasoning}
+        </p>
+      </div>
+
+      <div className="col-span-12 min-w-0 md:col-span-2">
+        {row.signals.length > 0 ? (
+          <div className="flex flex-wrap gap-1">
+            {row.signals.map((s) => (
+              <span
+                key={s}
+                className="inline-flex items-center rounded-md bg-secondary px-1.5 py-0.5 font-inter text-[10px] text-muted-foreground"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="col-span-12 flex flex-wrap gap-x-3 gap-y-0.5 font-inter text-[11px] text-muted-foreground md:col-span-2 md:flex-col md:items-end md:gap-0.5">
         <span>{row.hq}</span>
         <span>
           {row.employees} ppl · {row.founded}
         </span>
-        <span>{row.funding}</span>
+        <span className="text-muted-foreground/80">{row.funding}</span>
       </div>
     </>
   )
@@ -1069,12 +1212,12 @@ function Row({ row }: { row: EvalRow }) {
 function ScoreBar({ score, tier }: { score: number; tier: Tier }) {
   const color =
     tier === "high"
-      ? "bg-tier-high"
+      ? "bg-emerald-500"
       : tier === "medium"
         ? "bg-tier-medium"
         : "bg-muted-foreground"
   return (
-    <div className="relative h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-secondary">
+    <div className="relative h-1 w-full min-w-[80px] max-w-[200px] flex-1 overflow-hidden rounded-full bg-secondary">
       <motion.div
         className={cn("absolute inset-y-0 left-0", color)}
         initial={{ width: 0 }}
@@ -1090,34 +1233,42 @@ function DiscardedDrawer({
   onToggle,
   rows,
   onRestore,
+  pinnedOpen = false,
 }: {
   open: boolean
   onToggle: () => void
   rows: EvalRow[]
   onRestore: (id: string) => void
+  pinnedOpen?: boolean
 }) {
   return (
-    <div className="border-t border-border bg-secondary/40">
+    <div>
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between px-5 py-3 font-mono text-[11px] text-muted-foreground transition hover:text-foreground"
+        disabled={pinnedOpen}
+        className={cn(
+          "group flex w-full cursor-pointer items-center justify-between bg-secondary/50 px-5 py-3 font-inter text-[11px] text-muted-foreground transition hover:bg-secondary/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+          pinnedOpen && "cursor-default hover:bg-secondary/50",
+        )}
       >
         <span className="inline-flex items-center gap-2">
           <ChevronDown
             className={cn(
-              "size-3.5 transition-transform",
+              "size-3.5 shrink-0 text-[#777] transition-transform",
               open ? "rotate-0" : "-rotate-90",
             )}
           />
-          discarded · {rows.length}
+          Discarded · {rows.length}
           <span className="text-muted-foreground/60">
-            (low matches dropped from view)
+            (Low matches dropped from view)
           </span>
         </span>
-        <span className="text-muted-foreground/70">
-          {open ? "hide" : "show"}
-        </span>
+        {!pinnedOpen && (
+          <span className="text-muted-foreground/70 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            {open ? "Hide" : "Show"}
+          </span>
+        )}
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -1129,10 +1280,10 @@ function DiscardedDrawer({
             transition={{ duration: 0.22, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <ul className="divide-y divide-border/60 px-5 pb-3">
+            <ul className="divide-y divide-border/60 px-5 py-3">
               {rows.length === 0 && (
-                <li className="py-3 text-center font-mono text-[11px] text-muted-foreground">
-                  nothing discarded yet.
+                <li className="py-3 text-center font-inter text-[11px] text-muted-foreground">
+                  Nothing discarded yet.
                 </li>
               )}
               {rows.map((r) => (
@@ -1145,21 +1296,21 @@ function DiscardedDrawer({
                     <span className="truncate text-sm text-foreground/80">
                       {r.name}
                     </span>
-                    <span className="hidden md:inline truncate font-mono text-[11px] text-muted-foreground">
+                    <span className="hidden md:inline truncate font-inter text-[11px] text-muted-foreground">
                       {r.reasoning}
                     </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2 font-mono text-[11px]">
+                  <div className="flex shrink-0 items-center gap-2 font-inter text-[11px]">
                     <span className="tabular-nums text-muted-foreground">
                       {r.score}
                     </span>
                     <button
                       type="button"
                       onClick={() => onRestore(r.id)}
-                      className="inline-flex h-6 items-center gap-1 rounded border border-border bg-card px-2 text-muted-foreground transition hover:text-foreground hover:bg-secondary"
+                      className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-[5px] border border-border bg-card px-2 text-muted-foreground transition hover:text-foreground hover:bg-secondary"
                     >
                       <Undo2 className="size-3" />
-                      restore
+                      Restore
                     </button>
                   </div>
                 </li>
