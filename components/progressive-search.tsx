@@ -2,12 +2,14 @@
 
 import {
   memo,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ComponentType,
+  type KeyboardEvent,
 } from "react"
 import { toast } from "sonner"
 import { useTheme } from "next-themes"
@@ -50,6 +52,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  KeyboardShortcutsFooter,
+  KeyboardShortcutsHelp,
+} from "@/components/keyboard-shortcuts-help"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ZeroWordmark } from "@/components/zero-wordmark"
 import { COMPANIES, type Company, type Tier } from "@/lib/data"
@@ -108,6 +114,38 @@ function sortEvalRows(
   })
 }
 
+function showAppToast(message: string) {
+  toast(message, { icon: null })
+}
+
+const ROW_FOCUS_RING =
+  "outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset"
+
+function rowMatchAriaLabel(row: EvalRow) {
+  const tier =
+    row.tier === "high" ? "High" : row.tier === "medium" ? "Medium" : "Low"
+  return `${row.name}, ${tier} match`
+}
+
+function pickNextVisibleRowId(
+  removedId: string,
+  prevIds: string[],
+  nextIds: string[],
+): string | null {
+  if (nextIds.length === 0) return null
+  const oldIdx = prevIds.indexOf(removedId)
+  if (oldIdx === -1) return nextIds[0] ?? null
+  for (let i = oldIdx; i < prevIds.length; i++) {
+    const id = prevIds[i]
+    if (id && id !== removedId && nextIds.includes(id)) return id
+  }
+  for (let i = oldIdx - 1; i >= 0; i--) {
+    const id = prevIds[i]
+    if (id && nextIds.includes(id)) return id
+  }
+  return nextIds[0] ?? null
+}
+
 export function ProgressiveSearch() {
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT)
   const [draft, setDraft] = useState(DEFAULT_PROMPT)
@@ -130,11 +168,15 @@ export function ProgressiveSearch() {
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [promptRelevant, setPromptRelevant] = useState(true)
   const [promptMultiline, setPromptMultiline] = useState(false)
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
+  const [detailRowId, setDetailRowId] = useState<string | null>(null)
 
   const timeoutsRef = useRef<number[]>([])
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const searchGenerationRef = useRef(0)
   const lastToastedGenerationRef = useRef(0)
+  const focusedRowIdRef = useRef<string | null>(null)
+  const prevVisibleRowIdsRef = useRef<string[]>([])
 
   const clearTimers = () => {
     timeoutsRef.current.forEach((t) => window.clearTimeout(t))
@@ -143,8 +185,22 @@ export function ProgressiveSearch() {
 
   useEffect(() => () => clearTimers(), [])
 
-  const startSearch = (q: string) => {
+  const stopSearch = () => {
     clearTimers()
+    lastToastedGenerationRef.current = searchGenerationRef.current
+    setRunning(false)
+    setDone(true)
+    setActiveIds([])
+    showAppToast("Search stopped")
+  }
+
+  const startSearch = (q: string) => {
+    const interrupting = running
+    clearTimers()
+    if (interrupting) {
+      lastToastedGenerationRef.current = searchGenerationRef.current
+      showAppToast("Re-running the search")
+    }
     searchGenerationRef.current += 1
     const relevant = isPromptRelevant(q)
     setPromptRelevant(relevant)
@@ -156,6 +212,7 @@ export function ProgressiveSearch() {
     setShowDiscarded(false)
     setTierFilter("all")
     setTierSectionsOpen({ ...DEFAULT_TIER_SECTIONS_OPEN })
+    setDetailRowId(null)
 
     const reset: EvalRow[] = COMPANIES.map((c) => ({ ...c, state: "pending" }))
     setRows(reset)
@@ -216,7 +273,7 @@ export function ProgressiveSearch() {
     if (!done) return
     if (lastToastedGenerationRef.current === searchGenerationRef.current) return
     lastToastedGenerationRef.current = searchGenerationRef.current
-    toast("Search completed", { icon: null })
+    showAppToast("Search completed")
   }, [done])
 
   const submit = () => {
@@ -286,6 +343,101 @@ export function ProgressiveSearch() {
     return "results"
   }, [isResultsIdle, running, hasVisibleResults, done, promptRelevant])
 
+  const discardedListOpen =
+    promptRelevant &&
+    showDiscardedSection &&
+    (tierFilter === "discarded" || showDiscarded)
+
+  const visibleRowIds = useMemo(() => {
+    if (resultsPanelKey !== "results") return []
+    if (tierFilter === "discarded") {
+      return discardedListOpen ? discardedRows.map((r) => r.id) : []
+    }
+    const ids: string[] = []
+    for (const tier of TIERS_IN_ORDER) {
+      if (tierFilter !== "all" && tierFilter !== tier) continue
+      if (!tierSectionsOpen[tier]) continue
+      for (const row of rowsByTier[tier]) ids.push(row.id)
+    }
+    if (tierFilter === "all" && discardedListOpen) {
+      for (const row of discardedRows) ids.push(row.id)
+    }
+    return ids
+  }, [
+    resultsPanelKey,
+    tierFilter,
+    tierSectionsOpen,
+    rowsByTier,
+    discardedListOpen,
+    discardedRows,
+  ])
+
+  const focusRowById = useCallback((id: string | null) => {
+    setFocusedRowId(id)
+    focusedRowIdRef.current = id
+    if (!id) return
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`[data-focus-row="${id}"]`)
+        ?.focus()
+    })
+  }, [])
+
+  const getRowTabIndex = useCallback(
+    (rowId: string) => {
+      if (!visibleRowIds.includes(rowId)) return -1
+      const activeId = focusedRowId ?? visibleRowIds[0]
+      return activeId === rowId ? 0 : -1
+    },
+    [focusedRowId, visibleRowIds],
+  )
+
+  const handleRowKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLElement>, rowId: string) => {
+      const idx = visibleRowIds.indexOf(rowId)
+      if (idx === -1) return
+
+      switch (e.key) {
+        case "ArrowDown": {
+          e.preventDefault()
+          const next = visibleRowIds[idx + 1]
+          if (next) focusRowById(next)
+          break
+        }
+        case "ArrowUp": {
+          e.preventDefault()
+          const prev = visibleRowIds[idx - 1]
+          if (prev) focusRowById(prev)
+          break
+        }
+        case "Home": {
+          e.preventDefault()
+          const first = visibleRowIds[0]
+          if (first) focusRowById(first)
+          break
+        }
+        case "End": {
+          e.preventDefault()
+          const last = visibleRowIds[visibleRowIds.length - 1]
+          if (last) focusRowById(last)
+          break
+        }
+        case "Enter": {
+          e.preventDefault()
+          if (discardedRows.some((r) => r.id === rowId)) {
+            restoreRow(rowId)
+            return
+          }
+          setDetailRowId(rowId)
+          break
+        }
+        default:
+          break
+      }
+    },
+    [visibleRowIds, focusRowById, discardedRows, restoreRow],
+  )
+
   const fadeSlideProps = useFadeSlideMotionProps()
   const collapseTransition = useCollapseTransition()
   const actionTransition = useMotionTransition(0.18)
@@ -342,13 +494,91 @@ export function ProgressiveSearch() {
     setTierSectionsOpen({ ...DEFAULT_TIER_SECTIONS_OPEN })
     setPromptRelevant(true)
     setHoverId(null)
+    setFocusedRowId(null)
+    setDetailRowId(null)
+    focusedRowIdRef.current = null
+    prevVisibleRowIdsRef.current = []
     setRows(COMPANIES.map((c) => ({ ...c, state: "pending" })))
-    requestAnimationFrame(() => inputRef.current?.focus())
+    requestAnimationFrame(() => {
+      const el = inputRef.current
+      if (el) {
+        el.setSelectionRange(0, 0)
+        el.blur()
+      }
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur()
+      }
+    })
   }
+
+  // When a focused row leaves the visible list (e.g. moved to Discarded), move focus forward.
+  useEffect(() => {
+    const prevIds = prevVisibleRowIdsRef.current
+    if (focusedRowId && !visibleRowIds.includes(focusedRowId)) {
+      const nextId = pickNextVisibleRowId(
+        focusedRowId,
+        prevIds,
+        visibleRowIds,
+      )
+      if (nextId) focusRowById(nextId)
+      else {
+        setFocusedRowId(null)
+        focusedRowIdRef.current = null
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+      }
+    }
+    prevVisibleRowIdsRef.current = visibleRowIds
+  }, [visibleRowIds, focusedRowId, focusRowById])
+
+  // After sort or pass completion, restore focus by company id.
+  useEffect(() => {
+    const id = focusedRowIdRef.current
+    if (!id || resultsPanelKey !== "results" || !visibleRowIds.includes(id)) {
+      return
+    }
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-focus-row="${id}"]`,
+      )
+      if (el && document.activeElement !== el) {
+        el.focus()
+        setFocusedRowId(id)
+      }
+    })
+  }, [done, sort, visibleRowIds, resultsPanelKey, rowsByTier])
+
+  useEffect(() => {
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      if (detailRowId) {
+        e.preventDefault()
+        setDetailRowId(null)
+        return
+      }
+      if (running) {
+        e.preventDefault()
+        stopSearch()
+        return
+      }
+      const onRow =
+        focusedRowId != null ||
+        (e.target as HTMLElement | null)?.closest("[data-focus-row]")
+      if (onRow) {
+        e.preventDefault()
+        setFocusedRowId(null)
+        focusedRowIdRef.current = null
+        inputRef.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [running, detailRowId, focusedRowId, stopSearch])
 
   // Focus prompt with "/" when not typing in a field.
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
       const el = e.target as HTMLElement | null
       const typing = el?.tagName === "INPUT" || el?.tagName === "TEXTAREA"
       if (e.key === "/" && !typing) {
@@ -362,10 +592,10 @@ export function ProgressiveSearch() {
 
   return (
     <TooltipProvider delayDuration={120}>
-    <main className="relative min-h-dvh">
+    <main className="relative flex min-h-dvh flex-col">
       <BackgroundGrid />
 
-      <div className="relative mx-auto max-w-6xl px-6 pt-12 pb-32 md:px-8">
+      <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 pt-12 pb-12 md:px-8">
         <Header onLogoClick={resetApp} />
 
         {/* Prompt */}
@@ -407,7 +637,7 @@ export function ProgressiveSearch() {
                 onKeyDown={onKey}
                 rows={1}
                 placeholder="Describe what you're looking for…"
-                className="min-h-10 max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent py-2.5 text-base leading-5 outline-none placeholder:text-muted-foreground/70"
+                className="min-h-10 max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent py-2.5 text-base leading-5 outline-none placeholder:text-muted-foreground/70 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
               />
               {(running || draft.trim().length > 0) && (
                 <div
@@ -428,13 +658,11 @@ export function ProgressiveSearch() {
                       >
                         <button
                           type="button"
-                          onClick={() => {
-                            clearTimers()
-                            setRunning(false)
-                            setDone(true)
-                            setActiveIds([])
-                          }}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-muted/50 px-3 font-inter text-[11px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-muted hover:text-foreground"
+                          onClick={stopSearch}
+                          className={cn(
+                            "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-muted/50 px-3 font-inter text-[11px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-muted hover:text-foreground",
+                            ROW_FOCUS_RING,
+                          )}
                         >
                           <X className="size-3 opacity-70" />
                           Stop
@@ -453,7 +681,10 @@ export function ProgressiveSearch() {
                         <button
                           type="button"
                           onClick={submit}
-                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md bg-black px-2.5 font-inter text-[12px] font-medium text-white transition hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+                          className={cn(
+                            "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md bg-black px-2.5 font-inter text-[12px] font-medium text-white transition hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200",
+                            ROW_FOCUS_RING,
+                          )}
                         >
                           <MagicWand className="size-3 text-current" />
                           {running ? "Re-run" : done ? "Run again" : "Run"}
@@ -480,7 +711,11 @@ export function ProgressiveSearch() {
 
                   {/* Status bar */}
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 font-inter text-[11px] text-muted-foreground">
-                    <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <div
+                      className="flex min-w-0 flex-wrap items-center gap-3"
+                      aria-live="polite"
+                      aria-atomic="true"
+                    >
                       <span className="inline-flex items-center gap-1.5">
                         <span
                           className={cn(
@@ -503,6 +738,18 @@ export function ProgressiveSearch() {
                             {running ? "Evaluating" : done ? "Complete" : "Ready"}
                           </motion.span>
                         </AnimatePresence>
+                        {running ? (
+                          <span className="sr-only">
+                            Evaluating companies, {fakeEvaluated.toLocaleString()}{" "}
+                            of {TOTAL_CANDIDATES.toLocaleString()} scanned
+                          </span>
+                        ) : null}
+                        {done && !running ? (
+                          <span className="sr-only">
+                            Search complete. {survivingRows.length} companies in
+                            results.
+                          </span>
+                        ) : null}
                       </span>
                       {running && (
                         <>
@@ -563,7 +810,10 @@ export function ProgressiveSearch() {
         </section>
 
         {/* Results list */}
-        <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
+        <section
+          className="mt-4 overflow-hidden rounded-xl border border-border bg-card"
+          aria-label="Search results"
+        >
           <AnimatePresence mode="wait" initial={false}>
             {resultsPanelKey === "results" ? (
               <motion.div key="results" {...fadeSlideProps}>
@@ -587,6 +837,12 @@ export function ProgressiveSearch() {
                           rows={tierRows}
                           hoverId={hoverId}
                           onHover={setHoverId}
+                          focusedRowId={focusedRowId}
+                          detailRowId={detailRowId}
+                          onDetailRowIdChange={setDetailRowId}
+                          onRowKeyDown={handleRowKeyDown}
+                          onRowFocus={focusRowById}
+                          getRowTabIndex={getRowTabIndex}
                         />
                       )
                     })}
@@ -602,6 +858,9 @@ export function ProgressiveSearch() {
                       rows={discardedRows}
                       onRestore={restoreRow}
                       pinnedOpen={tierFilter === "discarded"}
+                      onRowKeyDown={handleRowKeyDown}
+                      onRowFocus={focusRowById}
+                      getRowTabIndex={getRowTabIndex}
                     />
                   )}
                 </div>
@@ -612,7 +871,6 @@ export function ProgressiveSearch() {
               <EmptyState
                 key="idle"
                 variant="no-match"
-                size="lg"
                 icon={Search}
                 title="Run a search to see results"
                 body={
@@ -685,6 +943,9 @@ export function ProgressiveSearch() {
           </AnimatePresence>
         </section>
 
+        <div className="mt-auto w-full pt-8">
+          <KeyboardShortcutsFooter />
+        </div>
       </div>
     </main>
     </TooltipProvider>
@@ -702,7 +963,7 @@ function Header({ onLogoClick }: { onLogoClick?: () => void }) {
             type="button"
             onClick={onLogoClick}
             className="cursor-pointer rounded-sm border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            aria-label="Reset and edit prompt"
+            aria-label="Reset search"
           >
             <ZeroWordmark />
           </button>
@@ -714,7 +975,11 @@ function Header({ onLogoClick }: { onLogoClick?: () => void }) {
           progressive search
         </span>
       </div>
-      <ThemeToggle />
+      <div className="flex items-center gap-1">
+        <KeyboardShortcutsHelp />
+        <span className="h-3 w-px shrink-0 bg-border" aria-hidden />
+        <ThemeToggle />
+      </div>
     </header>
   )
 }
@@ -777,7 +1042,6 @@ function EmptyStateHintsPopover({ hints }: { hints: string[] }) {
 
 function EmptyState({
   variant = "default",
-  size = "default",
   icon: Icon,
   title,
   body,
@@ -785,7 +1049,6 @@ function EmptyState({
   action,
 }: {
   variant?: "default" | "no-match"
-  size?: "default" | "lg"
   icon: ComponentType<{ className?: string }>
   title: string
   body: React.ReactNode
@@ -839,7 +1102,7 @@ function EmptyState({
   const TitleBlock = (
     <h3
       className={cn(
-        "font-sans font-semibold tracking-tight text-foreground",
+        "font-sans font-medium tracking-tight text-foreground",
         isNoMatch ? "text-base sm:text-[17px]" : "text-sm",
       )}
     >
@@ -888,9 +1151,7 @@ function EmptyState({
       className={cn(
         "flex w-full flex-col items-center justify-center px-6 text-center",
         isNoMatch
-          ? size === "lg"
-            ? "group relative min-h-[min(28rem,58vh)] py-16 sm:py-20"
-            : "group relative min-h-[min(22rem,52vh)] py-14 sm:py-16"
+          ? "group relative min-h-[min(28rem,58vh)] py-16 sm:py-20"
           : "py-16",
       )}
     >
@@ -1013,6 +1274,12 @@ function TierResultsSection({
   rows,
   hoverId,
   onHover,
+  focusedRowId,
+  detailRowId,
+  onDetailRowIdChange,
+  onRowKeyDown,
+  onRowFocus,
+  getRowTabIndex,
 }: {
   tier: Tier
   open: boolean
@@ -1020,6 +1287,12 @@ function TierResultsSection({
   rows: EvalRow[]
   hoverId: string | null
   onHover: (id: string | null) => void
+  focusedRowId: string | null
+  detailRowId: string | null
+  onDetailRowIdChange: (id: string | null) => void
+  onRowKeyDown: (e: KeyboardEvent<HTMLElement>, rowId: string) => void
+  onRowFocus: (id: string) => void
+  getRowTabIndex: (rowId: string) => 0 | -1
 }) {
   const collapseTransition = useCollapseTransition()
   const rowTransition = useRowMotionTransition()
@@ -1058,26 +1331,50 @@ function TierResultsSection({
             transition={collapseTransition}
             className="overflow-hidden"
           >
-            <ul className="divide-y divide-border">
+            <ul role="list" className="divide-y divide-border">
               <AnimatePresence initial={false}>
                 {rows.map((row) => (
                   <motion.li
                     key={row.id}
+                    role="listitem"
                     layout={rowTransition.layout ? "position" : false}
                     data-row-id={row.id}
+                    data-focus-row={row.id}
+                    tabIndex={getRowTabIndex(row.id)}
+                    aria-label={rowMatchAriaLabel(row)}
                     initial={false}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: rowTransition.exitY }}
                     transition={rowTransition.transition}
                     onMouseEnter={() => onHover(row.id)}
                     onMouseLeave={() => onHover(null)}
+                    onFocus={() => onRowFocus(row.id)}
+                    onKeyDown={(e) => onRowKeyDown(e, row.id)}
+                    onPointerDown={(e) => {
+                      if (e.button !== 0) return
+                      const target = e.target as HTMLElement
+                      if (
+                        target.closest("a, button, [role='button']") &&
+                        target.closest("[data-focus-row]") !== e.currentTarget
+                      ) {
+                        return
+                      }
+                      onRowFocus(row.id)
+                    }}
                     className={cn(
-                      "group relative outline-none transition-colors",
+                      "group relative transition-colors",
+                      ROW_FOCUS_RING,
                       "hover:bg-[#fafafa] dark:hover:bg-muted/30",
                       hoverId === row.id && "bg-[#fafafa] dark:bg-muted/30",
                     )}
                   >
-                    <Row row={row} />
+                    <Row
+                      row={row}
+                      detailOpen={detailRowId === row.id}
+                      onDetailOpenChange={(open) =>
+                        onDetailRowIdChange(open ? row.id : null)
+                      }
+                    />
                   </motion.li>
                 ))}
               </AnimatePresence>
@@ -1131,6 +1428,7 @@ function FilterControl({
             disabled
               ? "cursor-not-allowed opacity-50"
               : "cursor-pointer hover:bg-secondary/40",
+            ROW_FOCUS_RING,
           )}
         >
           <Filter className="size-3.5 shrink-0 text-[#323232] dark:text-muted-foreground" aria-hidden />
@@ -1216,6 +1514,7 @@ function SortControl({
               !disabled &&
                 !selected &&
                 "hover:bg-muted/40 hover:text-[#323232] dark:hover:text-foreground",
+              ROW_FOCUS_RING,
             )}
           >
             {o.label}
@@ -1492,14 +1791,27 @@ function CompanyHoverCard({ row }: { row: EvalRow }) {
   )
 }
 
-function Row({ row }: { row: EvalRow }) {
+function Row({
+  row,
+  detailOpen = false,
+  onDetailOpenChange,
+}: {
+  row: EvalRow
+  detailOpen?: boolean
+  onDetailOpenChange?: (open: boolean) => void
+}) {
   return (
     <div className="flex w-full flex-col gap-3 overflow-hidden p-4">
       <div className="flex items-center justify-between gap-2.5">
         <div className="flex min-w-0 items-start gap-3">
           <Logo key={row.domain} domain={row.domain} name={row.name} />
           <div className="min-w-0">
-            <HoverCard openDelay={120} closeDelay={80}>
+            <HoverCard
+              open={detailOpen}
+              onOpenChange={onDetailOpenChange}
+              openDelay={120}
+              closeDelay={80}
+            >
               <HoverCardTrigger asChild>
                 <div className="min-w-0 cursor-pointer">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1589,12 +1901,18 @@ function DiscardedDrawer({
   rows,
   onRestore,
   pinnedOpen = false,
+  onRowKeyDown,
+  onRowFocus,
+  getRowTabIndex,
 }: {
   open: boolean
   onToggle: () => void
   rows: EvalRow[]
   onRestore: (id: string) => void
   pinnedOpen?: boolean
+  onRowKeyDown: (e: KeyboardEvent<HTMLElement>, rowId: string) => void
+  onRowFocus: (id: string) => void
+  getRowTabIndex: (rowId: string) => 0 | -1
 }) {
   const collapseTransition = useCollapseTransition()
 
@@ -1638,7 +1956,11 @@ function DiscardedDrawer({
             transition={collapseTransition}
             className="overflow-hidden"
           >
-            <ul className="divide-y divide-border/60 px-5 py-3">
+            <ul
+              role="list"
+              aria-label="Discarded companies"
+              className="divide-y divide-border/60 px-5 py-3"
+            >
               {rows.length === 0 && (
                 <li className="py-3 text-center font-inter text-[11px] text-muted-foreground">
                   Nothing discarded yet.
@@ -1647,7 +1969,22 @@ function DiscardedDrawer({
               {rows.map((r) => (
                 <li
                   key={r.id}
-                  className="group flex items-center justify-between gap-3 py-2.5"
+                  role="listitem"
+                  data-focus-row={r.id}
+                  tabIndex={getRowTabIndex(r.id)}
+                  aria-label={`${r.name}, discarded`}
+                  onFocus={() => onRowFocus(r.id)}
+                  onKeyDown={(e) => onRowKeyDown(e, r.id)}
+                  onPointerDown={(e) => {
+                    if (e.button !== 0) return
+                    const target = e.target as HTMLElement
+                    if (target.closest("button")) return
+                    onRowFocus(r.id)
+                  }}
+                  className={cn(
+                    "group flex items-center justify-between gap-3 py-2.5",
+                    ROW_FOCUS_RING,
+                  )}
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <Logo domain={r.domain} name={r.name} size={24} />

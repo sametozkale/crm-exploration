@@ -21,6 +21,7 @@ import {
   CornerDownLeftIcon,
   FilterIcon as FilterIconSvg,
   GripVerticalIcon as GripVerticalIconSvg,
+  KeyboardIcon as KeyboardIconSvg,
   InformationCircleIcon,
   Loading03Icon,
   MagicWand02Icon,
@@ -97,6 +98,7 @@ export const ChevronRight = createIcon(ChevronRightIconSvg, "ChevronRight")
 export const CornerDownLeft = createIcon(CornerDownLeftIcon, "CornerDownLeft")
 export const Filter = createIcon(FilterIconSvg, "Filter")
 export const Info = createIcon(InformationCircleIcon, "Info")
+export const Keyboard = createIcon(KeyboardIconSvg, "Keyboard")
 export const EditPrompt = createIcon(AiEditingIcon, "EditPrompt")
 export const ScanSearch = createIcon(AiSearchIcon, "ScanSearch")
 export const Search = createIcon(Search01Icon, "Search")

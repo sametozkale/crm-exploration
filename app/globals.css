@@ -307,14 +307,16 @@ html.light {
   }
 }
 
-/* Sonner: stay fully inside the viewport (bottom-right) */
-[data-sonner-toaster] {
-  --width: max-content;
+/* Sonner: bottom-right — anchor toasts to the right edge of the viewport */
+[data-sonner-toaster][data-x-position='right'] {
+  right: max(24px, env(safe-area-inset-right)) !important;
+  left: auto !important;
+  width: var(--width, 356px) !important;
   max-width: calc(100vw - 3rem);
 }
 
-[data-sonner-toaster][data-x-position='right'] {
-  right: max(1.5rem, env(safe-area-inset-right)) !important;
+[data-sonner-toaster][data-x-position='right'] [data-sonner-toast][data-styled='true'] {
+  right: 0 !important;
   left: auto !important;
 }
 
@@ -324,7 +326,19 @@ html.light {
 }
 
 [data-sonner-toast][data-styled='true'] {
-  width: max-content !important;
+  width: fit-content !important;
+  min-width: min-content;
   max-width: calc(100vw - 3rem);
-  --toast-padding: 6px 12px;
+  flex-wrap: nowrap !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  --toast-padding: 8px 14px;
+}
+
+[data-sonner-toast][data-styled='true'] [data-content],
+[data-sonner-toast][data-styled='true'] [data-title] {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25 !important;
 }

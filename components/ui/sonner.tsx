@@ -1,6 +1,5 @@
 'use client'
 
-import type { CSSProperties } from 'react'
 import { useTheme } from 'next-themes'
 import { Toaster as Sonner, type ToasterProps } from 'sonner'
 
@@ -11,26 +10,24 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps['theme']}
       position="bottom-right"
+      offset={24}
       closeButton={false}
       className="toaster group"
-      style={
-        {
-          '--width': 'max-content',
-        } as CSSProperties
-      }
       toastOptions={{
         style: {
-          width: 'max-content',
+          width: 'fit-content',
           maxWidth: 'min(100%, calc(100vw - 3rem))',
           minHeight: 'unset',
           height: 'auto',
-          padding: '6px 12px',
+          padding: '8px 14px',
         },
         classNames: {
           toast:
-            'group toast !h-auto !min-h-0 !w-max max-w-[min(100%,calc(100vw-3rem))] items-center !gap-0 rounded-lg border font-inter text-[11px] group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg',
-          title: '!m-0 !p-0 text-[11px] font-medium leading-none group-[.toast]:text-foreground',
-          description: 'group-[.toast]:text-muted-foreground',
+            'group toast !h-auto !min-h-0 w-fit shrink-0 max-w-[min(100%,calc(100vw-3rem))] flex-nowrap items-center gap-0 rounded-lg border font-inter text-[13px] bg-background text-foreground border-border shadow-lg',
+          title:
+            '!m-0 max-w-none shrink-0 overflow-hidden text-ellipsis whitespace-nowrap p-0 text-[13px] font-medium leading-none text-foreground',
+          description: 'text-muted-foreground',
+          content: 'shrink-0',
           icon: '!hidden !size-0 !p-0',
         },
       }}
