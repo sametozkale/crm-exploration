@@ -28,7 +28,7 @@ html.light {
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0 0 0 / 0.08);
+  --border: oklch(0 0 0 / 0.06);
   --input: oklch(0 0 0 / 0.12);
   --ring: #ffd503;
 
@@ -75,7 +75,7 @@ html.light {
   --destructive: oklch(0.6 0.22 25);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(1 0 0 / 0.08);
+  --border: oklch(1 0 0 / 0.06);
   --input: oklch(1 0 0 / 0.12);
   --ring: #ffd503;
 

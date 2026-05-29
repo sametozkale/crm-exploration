@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  memo,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -128,6 +129,7 @@ export function ProgressiveSearch() {
   const [showDiscarded, setShowDiscarded] = useState(false)
   const [hoverId, setHoverId] = useState<string | null>(null)
   const [promptRelevant, setPromptRelevant] = useState(true)
+  const [promptMultiline, setPromptMultiline] = useState(false)
 
   const timeoutsRef = useRef<number[]>([])
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -249,11 +251,12 @@ export function ProgressiveSearch() {
     return grouped
   }, [survivingRows, sort])
 
-  const discardedRows = useMemo(
-    () =>
-      promptRelevant ? rows.filter((r) => r.state === "discarded") : [],
-    [rows, promptRelevant],
-  )
+  const discardedRows = useMemo(() => {
+    const list = promptRelevant
+      ? rows.filter((r) => r.state === "discarded")
+      : []
+    return sortEvalRows(list, sort)
+  }, [rows, promptRelevant, sort])
 
   const hasTierResults = TIERS_IN_ORDER.some(
     (tier) => rowsByTier[tier].length > 0,
@@ -291,6 +294,23 @@ export function ProgressiveSearch() {
     (evaluatedCount / COMPANIES.length) * TOTAL_CANDIDATES,
   )
 
+  const resizePromptTextarea = (el: HTMLTextAreaElement | null) => {
+    if (!el) return
+    el.style.height = "auto"
+    const next = Math.min(el.scrollHeight, 120)
+    el.style.height = `${next}px`
+    setPromptMultiline(next > 44)
+  }
+
+  useLayoutEffect(() => {
+    resizePromptTextarea(inputRef.current)
+  }, [draft])
+
+  const onPromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDraft(e.target.value)
+    resizePromptTextarea(e.target)
+  }
+
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -314,6 +334,7 @@ export function ProgressiveSearch() {
     setDone(false)
     setPrompt("")
     setDraft("")
+    setPromptMultiline(false)
     setEvaluatedCount(0)
     setActiveIds([])
     setShowDiscarded(false)
@@ -367,19 +388,34 @@ export function ProgressiveSearch() {
                 running ? "prompt-card-surface-inset" : "rounded-xl",
               )}
             >
-            <div className="flex items-center gap-3 px-4 py-3">
-              <Search className="size-4 shrink-0 text-muted-foreground" />
+            <div
+              className={cn(
+                "flex gap-3 px-4 py-3",
+                promptMultiline ? "items-start" : "items-center",
+              )}
+            >
+              <Search
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground",
+                  promptMultiline && "mt-2.5",
+                )}
+              />
               <textarea
                 ref={inputRef}
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={onPromptChange}
                 onKeyDown={onKey}
                 rows={1}
                 placeholder="Describe what you're looking for…"
-                className="flex h-10 flex-1 resize-none items-center bg-transparent py-2.5 text-base leading-5 outline-none placeholder:text-muted-foreground/70"
+                className="min-h-10 max-h-[120px] flex-1 resize-none overflow-y-auto bg-transparent py-2.5 text-base leading-5 outline-none placeholder:text-muted-foreground/70"
               />
               {(running || draft.trim().length > 0) && (
-                <div className="flex h-8 shrink-0 items-center gap-2">
+                <div
+                  className={cn(
+                    "flex h-8 shrink-0 items-center gap-2",
+                    promptMultiline && "mt-1",
+                  )}
+                >
                   <AnimatePresence initial={false} mode="popLayout">
                     {running ? (
                       <motion.div
@@ -507,7 +543,12 @@ export function ProgressiveSearch() {
         </section>
 
         {/* Toolbar */}
-        <section className="mt-6 flex items-center justify-between gap-4 [&_.font-inter]:![letter-spacing:-0.01em]">
+        <section
+          className={cn(
+            "mt-6 flex items-center justify-between gap-4 text-[#323232] [&_.font-inter]:![letter-spacing:-0.01em]",
+            isResultsIdle && "cursor-not-allowed",
+          )}
+        >
           <FilterControl
             value={tierFilter}
             onChange={setTierFilter}
@@ -526,19 +567,6 @@ export function ProgressiveSearch() {
           <AnimatePresence mode="wait" initial={false}>
             {resultsPanelKey === "results" ? (
               <motion.div key="results" {...fadeSlideProps}>
-                {hasVisibleResults && tierFilter !== "discarded" && (
-                  <div className="grid grid-cols-12 gap-x-4 gap-y-1 border-b border-border bg-secondary/50 px-5 py-2.5 font-inter text-[11px] font-medium text-muted-foreground">
-                    <div className="col-span-12 md:col-span-4">Company</div>
-                    <div className="col-span-12 md:col-span-4">
-                      Score · Reasoning
-                    </div>
-                    <div className="hidden md:col-span-2 md:block">Signals</div>
-                    <div className="hidden md:col-span-2 md:block text-right">
-                      Meta
-                    </div>
-                  </div>
-                )}
-
                 <div className="divide-y divide-border">
                   <LayoutGroup>
                     {TIERS_IN_ORDER.map((tier) => {
@@ -587,7 +615,13 @@ export function ProgressiveSearch() {
                 size="lg"
                 icon={Search}
                 title="Run a search to see results"
-                body="Describe companies in plain language — we score matches, sort tiers, and park weak fits in Discarded."
+                body={
+                  <>
+                    Describe companies in plain language. We score matches,{" "}
+                    <br />
+                    sort tiers, and park weak fits in Discarded.
+                  </>
+                }
                 action={{
                   label: draft.trim() ? "Run search" : "Use sample prompt",
                   icon: MagicWand,
@@ -833,7 +867,7 @@ function EmptyState({
       className={cn(
         "mt-6 inline-flex h-8 cursor-pointer items-center gap-1 rounded-md font-inter text-[11px] font-medium transition",
         isNoMatch
-          ? "border border-border bg-white px-2.5 text-[#777] transition-colors hover:border-[#eee] hover:bg-white hover:text-[#646464] dark:border-border dark:bg-white dark:text-[#323232] dark:hover:border-neutral-500 dark:hover:bg-white dark:hover:text-[#323232]"
+          ? "border border-border bg-white px-2.5 text-[#777] transition-colors hover:border-[#ddd] hover:bg-white hover:text-[#646464] dark:border-border dark:bg-white dark:text-[#323232] dark:hover:border-neutral-400 dark:hover:bg-white dark:hover:text-[#323232]"
           : "border border-border bg-card px-3 text-foreground hover:bg-secondary",
       )}
     >
@@ -940,11 +974,11 @@ function tierDotClass(tier: Tier) {
       : "bg-muted-foreground"
 }
 
-function TierSectionLabel({ tier }: { tier: Tier }) {
+function TierSectionLabel({ tier, count }: { tier: Tier; count: number }) {
   return (
     <span
       className={cn(
-        "inline-flex h-5 items-center gap-1.5 rounded-full border px-1.5 py-0 font-inter text-[10px] font-medium leading-none",
+        "inline-flex h-[22px] items-center gap-1.5 rounded-full border px-1.5 py-0 font-inter text-[10px] font-medium leading-none",
         tier === "high" &&
           "border-emerald-500/15 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400",
         tier === "medium" &&
@@ -961,7 +995,13 @@ function TierSectionLabel({ tier }: { tier: Tier }) {
         )}
         aria-hidden
       />
-      {tierLabel(tier)}
+      <span className="inline-flex items-center gap-1">
+        {tierLabel(tier)}
+        <span aria-hidden className="opacity-70">
+          ·
+        </span>
+        <span className="tabular-nums opacity-70">{count}</span>
+      </span>
     </span>
   )
 }
@@ -998,9 +1038,8 @@ function TierResultsSection({
               open ? "rotate-0" : "-rotate-90",
             )}
           />
-          <TierSectionLabel tier={tier} />
-          <span className="tabular-nums text-muted-foreground">· {rows.length}</span>
-          <span className="hidden text-muted-foreground/60 sm:inline">
+          <TierSectionLabel tier={tier} count={rows.length} />
+          <span className="hidden text-muted-foreground/60 group-hover:inline group-focus-visible:inline">
             ({tierSectionHint(tier)})
           </span>
         </span>
@@ -1020,22 +1059,22 @@ function TierResultsSection({
             className="overflow-hidden"
           >
             <ul className="divide-y divide-border">
-              <AnimatePresence mode="popLayout" initial={false}>
+              <AnimatePresence initial={false}>
                 {rows.map((row) => (
                   <motion.li
                     key={row.id}
-                    layout={rowTransition.layout}
+                    layout={rowTransition.layout ? "position" : false}
                     data-row-id={row.id}
-                    initial={{ opacity: 0, y: rowTransition.enterY }}
+                    initial={false}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: rowTransition.exitY }}
                     transition={rowTransition.transition}
                     onMouseEnter={() => onHover(row.id)}
                     onMouseLeave={() => onHover(null)}
                     className={cn(
-                      "group relative grid grid-cols-12 gap-x-4 gap-y-2 px-5 py-3.5 outline-none transition-colors md:gap-y-0",
-                      "hover:bg-secondary/50",
-                      hoverId === row.id && "bg-secondary/50",
+                      "group relative outline-none transition-colors",
+                      "hover:bg-[#fafafa] dark:hover:bg-muted/30",
+                      hoverId === row.id && "bg-[#fafafa] dark:bg-muted/30",
                     )}
                   >
                     <Row row={row} />
@@ -1088,15 +1127,15 @@ function FilterControl({
           aria-label={`Filter: ${selected.label}`}
           aria-disabled={disabled}
           className={cn(
-            "inline-flex h-8 items-center gap-2 rounded-md border border-border bg-white px-2.5 font-inter text-[11px] text-foreground transition-colors dark:bg-card",
+            "inline-flex h-8 items-center gap-2 rounded-md border border-border bg-white px-2.5 font-inter text-[11px] text-[#323232] transition-colors dark:bg-card dark:text-foreground",
             disabled
               ? "cursor-not-allowed opacity-50"
               : "cursor-pointer hover:bg-secondary/40",
           )}
         >
-          <Filter className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <Filter className="size-3.5 shrink-0 text-[#323232] dark:text-muted-foreground" aria-hidden />
           <span className="font-medium">{selected.label}</span>
-          <ChevronDown className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+          <ChevronDown className="size-3 shrink-0 text-[#323232] dark:text-muted-foreground" aria-hidden />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -1142,7 +1181,7 @@ function SortControl({
       aria-disabled={disabled}
       className={cn(
         "inline-flex h-8 items-center gap-0.5 rounded-md border border-border bg-white p-0.5 font-inter text-[11px] dark:bg-card",
-        disabled && "pointer-events-none opacity-50",
+        disabled && "cursor-not-allowed opacity-50",
       )}
     >
       {opts.map((o) => {
@@ -1172,23 +1211,23 @@ function SortControl({
                 ? "cursor-not-allowed"
                 : "cursor-pointer",
               selected
-                ? "bg-muted/60 font-medium text-foreground"
-                : "text-muted-foreground",
+                ? "bg-muted/60 font-medium text-[#323232] dark:text-foreground"
+                : "text-[#323232]/60 dark:text-muted-foreground",
               !disabled &&
                 !selected &&
-                "hover:bg-muted/40 hover:text-foreground",
+                "hover:bg-muted/40 hover:text-[#323232] dark:hover:text-foreground",
             )}
           >
             {o.label}
             {selected &&
               (sort.dir === "asc" ? (
                 <ArrowUpWideNarrow
-                  className="size-3 shrink-0 text-muted-foreground"
+                  className="size-3 shrink-0 text-[#323232] dark:text-muted-foreground"
                   aria-hidden
                 />
               ) : (
                 <ArrowDownWideNarrow
-                  className="size-3 shrink-0 text-muted-foreground"
+                  className="size-3 shrink-0 text-[#323232] dark:text-muted-foreground"
                   aria-hidden
                 />
               ))}
@@ -1197,6 +1236,21 @@ function SortControl({
       })}
     </div>
   )
+}
+
+// Persist successful logo URLs across sort/filter/layout updates.
+const logoReadySrcByKey = new Map<string, string>()
+
+function logoCacheKey(domain: string, colorScheme: "light" | "dark") {
+  return `${domain}:${colorScheme}`
+}
+
+function readLogoCache(cacheKey: string, sources: string[]) {
+  const ready = logoReadySrcByKey.get(cacheKey)
+  if (!ready) return null
+  const index = sources.indexOf(ready)
+  if (index < 0) return null
+  return { src: ready, index }
 }
 
 // Logo chain: SVGL (https://svgl.app) when mapped → Google favicons → DuckDuckGo → initials.
@@ -1213,39 +1267,66 @@ function isLogoImageUsable(img: HTMLImageElement, src: string) {
   return img.naturalWidth > 0 && img.naturalHeight > 0
 }
 
-function Logo({ domain, name, size = 36 }: { domain: string; name: string; size?: number }) {
+const Logo = memo(function Logo({
+  domain,
+  name,
+  size = 36,
+}: {
+  domain: string
+  name: string
+  size?: number
+}) {
   const { resolvedTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
-  const colorScheme = mounted && resolvedTheme === "dark" ? "dark" : "light"
+  const colorScheme: "light" | "dark" =
+    mounted && resolvedTheme === "dark" ? "dark" : "light"
+  const cacheKey = logoCacheKey(domain, colorScheme)
   const svglUrl = resolveSvglLogo(domain, colorScheme)
   const sources = useMemo(() => logoSources(domain, svglUrl), [domain, svglUrl])
-  const [idx, setIdx] = useState(0)
-  const [loaded, setLoaded] = useState(false)
+  const cached = readLogoCache(cacheKey, sources)
+
+  const [idx, setIdx] = useState(() => cached?.index ?? 0)
+  const [loaded, setLoaded] = useState(() => cached != null)
   const imgRef = useRef<HTMLImageElement>(null)
   const exhausted = idx >= sources.length
-  const src = exhausted ? null : sources[idx]
+  const src = cached?.src ?? (exhausted ? null : sources[idx])
+  const isCached = cached != null
 
   useEffect(() => {
+    const hit = readLogoCache(cacheKey, sources)
+    if (hit) {
+      setIdx(hit.index)
+      setLoaded(true)
+      return
+    }
     setIdx(0)
     setLoaded(false)
-  }, [domain, svglUrl])
+  }, [cacheKey, domain])
+
+  useEffect(() => {
+    const hit = readLogoCache(cacheKey, sources)
+    if (hit) {
+      setIdx(hit.index)
+      setLoaded(true)
+    }
+  }, [sources, cacheKey])
 
   const advanceOrShow = (img: HTMLImageElement, currentSrc: string) => {
     if (isLogoImageUsable(img, currentSrc)) {
       setLoaded(true)
+      logoReadySrcByKey.set(cacheKey, currentSrc)
       return
     }
-    setLoaded(false)
     setIdx((i) => i + 1)
   }
 
   useLayoutEffect(() => {
     const img = imgRef.current
-    if (!img || !src || !img.complete) return
-    advanceOrShow(img, src)
-  }, [src, idx, domain, svglUrl])
+    if (!img || !src) return
+    if (img.complete) advanceOrShow(img, src)
+  }, [src, idx, cacheKey])
 
   const initials = name
     .split(/[\s.-]+/)
@@ -1256,50 +1337,44 @@ function Logo({ domain, name, size = 36 }: { domain: string; name: string; size?
 
   return (
     <div
-      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-border/50 bg-secondary"
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border/50 bg-secondary"
       style={{ width: size, height: size }}
       aria-hidden
     >
-      {/* initials sit underneath as the resting/fallback layer */}
       <span className="absolute font-inter text-[11px] font-medium text-muted-foreground">
         {initials || "·"}
       </span>
-      {src && (
+      {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           ref={imgRef}
-          key={src}
+          key={cacheKey}
           src={src}
           alt=""
           width={size}
           height={size}
-          loading="lazy"
+          loading="eager"
           decoding="async"
           className={cn(
-            "relative size-full bg-background object-contain p-1 transition-opacity duration-300",
-            loaded ? "opacity-100" : "opacity-0",
+            "relative size-full bg-background object-contain p-1",
+            isCached || loaded ? "opacity-100" : "opacity-0 transition-opacity duration-300",
           )}
           onLoad={(e) => {
-            if (!src) return
             advanceOrShow(e.currentTarget, src)
           }}
           onError={() => {
-            setLoaded(false)
+            if (!logoReadySrcByKey.has(cacheKey)) setLoaded(false)
             setIdx((i) => i + 1)
           }}
           referrerPolicy="no-referrer"
         />
-      )}
+      ) : null}
     </div>
   )
-}
+})
 
 function tierLabel(tier: Tier) {
-  return tier === "high"
-    ? "High match"
-    : tier === "medium"
-      ? "Medium match"
-      : "Low match"
+  return tier === "high" ? "High" : tier === "medium" ? "Medium" : "Low"
 }
 
 function tierClasses(tier: Tier) {
@@ -1316,6 +1391,14 @@ function scoreTierDotClass(tier: Tier) {
     : tier === "medium"
       ? "bg-tier-medium"
       : "bg-muted-foreground"
+}
+
+function scorePillClasses(tier: Tier) {
+  return tier === "high"
+    ? "border-[oklch(69.6%_0.17_162.5/0.25)] text-[oklch(69.6%_0.17_162.5)]"
+    : tier === "medium"
+      ? "border-yellow-500/15 text-yellow-600 dark:text-yellow-400"
+      : "border-border text-muted-foreground"
 }
 
 function ScoreBreakdown({ row }: { row: EvalRow }) {
@@ -1411,66 +1494,65 @@ function CompanyHoverCard({ row }: { row: EvalRow }) {
 
 function Row({ row }: { row: EvalRow }) {
   return (
-    <>
-      <div className="col-span-12 flex min-w-0 items-start gap-3 md:col-span-4">
-        <Logo domain={row.domain} name={row.name} />
-        <div className="min-w-0 flex-1">
-          <HoverCard openDelay={120} closeDelay={80}>
-            <HoverCardTrigger asChild>
-              <div className="min-w-0 cursor-pointer">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="truncate font-sans text-sm font-medium text-foreground decoration-dotted underline-offset-4 group-hover:underline">
-                    {row.name}
-                  </span>
+    <div className="flex w-full flex-col gap-3 overflow-hidden p-4">
+      <div className="flex items-center justify-between gap-2.5">
+        <div className="flex min-w-0 items-start gap-3">
+          <Logo key={row.domain} domain={row.domain} name={row.name} />
+          <div className="min-w-0">
+            <HoverCard openDelay={120} closeDelay={80}>
+              <HoverCardTrigger asChild>
+                <div className="min-w-0 cursor-pointer">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate font-sans text-[15px] font-semibold leading-snug text-foreground decoration-dotted underline-offset-4 group-hover:underline">
+                      {row.name}
+                    </span>
+                    <a
+                      href={`https://${row.domain}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="hidden shrink-0 items-center rounded-sm bg-secondary px-1.5 py-0.5 font-inter text-[10px] text-muted-foreground transition hover:text-foreground group-hover:inline-flex"
+                    >
+                      {row.domain}
+                    </a>
+                  </div>
+                  <p className="mt-0.5 truncate font-inter text-[11px] text-muted-foreground">
+                    {row.tagline}
+                  </p>
                 </div>
-                <p className="mt-0.5 truncate font-inter text-[11px] text-muted-foreground">
-                  {row.tagline}
-                </p>
-              </div>
-            </HoverCardTrigger>
-            <CompanyHoverCard row={row} />
-          </HoverCard>
-          <a
-            href={`https://${row.domain}`}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="mt-1 inline-flex cursor-pointer items-center font-inter text-[11px] text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:text-foreground"
-          >
-            {row.domain}
-            <ArrowUpRight className="ml-0.5 size-3" />
-          </a>
+              </HoverCardTrigger>
+              <CompanyHoverCard row={row} />
+            </HoverCard>
+          </div>
         </div>
-      </div>
-
-      <div className="col-span-12 min-w-0 md:col-span-4">
-        <div className="flex items-center gap-3">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex min-w-0 flex-1 cursor-help items-center gap-2.5">
-                <span className="shrink-0 font-inter text-sm font-medium tabular-nums text-foreground">
-                  {row.score}
-                </span>
-                <ScoreBar score={row.score} tier={row.tier} />
-                <Info className="size-3 shrink-0 text-muted-foreground/50 opacity-0 transition-opacity group-hover:opacity-100" />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent
-              side="top"
-              align="start"
-              sideOffset={8}
-              className="w-auto overflow-hidden rounded-lg border border-border bg-popover p-0 text-popover-foreground shadow-lg"
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div
+              className={cn(
+                "flex shrink-0 cursor-help items-center justify-center rounded-full border-[1.5px] px-3 py-[5.5px]",
+                scorePillClasses(row.tier),
+              )}
             >
-              <ScoreBreakdown row={row} />
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-foreground/85">
-          {row.reasoning}
-        </p>
+              <span className="font-inter text-lg font-medium tabular-nums tracking-[-0.01em]">
+                {row.score}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            align="end"
+            sideOffset={8}
+            className="w-auto overflow-hidden rounded-lg border border-border bg-popover p-0 text-popover-foreground shadow-lg"
+          >
+            <ScoreBreakdown row={row} />
+          </TooltipContent>
+        </Tooltip>
       </div>
 
-      <div className="col-span-12 min-w-0 md:col-span-2">
+      <p className="font-inter text-[13px] leading-5 text-foreground/88">
+        {row.reasoning}
+      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         {row.signals.length > 0 ? (
           <div className="flex flex-wrap gap-1">
             {row.signals.map((s) => (
@@ -1482,42 +1564,21 @@ function Row({ row }: { row: EvalRow }) {
               </span>
             ))}
           </div>
-        ) : null}
+        ) : (
+          <span />
+        )}
+        <div className="flex shrink-0 flex-wrap items-center gap-1 font-inter text-[10px] text-muted-foreground">
+          <span>HQ {row.hq}</span>
+          <span className="font-light text-[#969696] dark:text-muted-foreground/60" aria-hidden>
+            •
+          </span>
+          <span>Size {row.employees}</span>
+          <span className="font-light text-[#969696] dark:text-muted-foreground/60" aria-hidden>
+            •
+          </span>
+          <span>{row.funding}</span>
+        </div>
       </div>
-
-      <div className="col-span-12 flex flex-wrap gap-x-3 gap-y-0.5 font-inter text-[11px] text-muted-foreground md:col-span-2 md:flex-col md:items-end md:gap-0.5">
-        <span>{row.hq}</span>
-        <span>
-          {row.employees} ppl · {row.founded}
-        </span>
-        <span className="text-muted-foreground/80">{row.funding}</span>
-      </div>
-    </>
-  )
-}
-
-function ScoreBar({ score, tier }: { score: number; tier: Tier }) {
-  const color =
-    tier === "high"
-      ? "bg-emerald-500"
-      : tier === "medium"
-        ? "bg-tier-medium"
-        : "bg-muted-foreground"
-  const barTransition = useMotionTransition(0)
-  const reduceMotion = barTransition.duration === 0
-
-  return (
-    <div className="relative h-1 w-full min-w-[80px] max-w-[200px] flex-1 overflow-hidden rounded-full bg-secondary">
-      <motion.div
-        className={cn("absolute inset-y-0 left-0", color)}
-        initial={{ width: 0 }}
-        animate={{ width: `${score}%` }}
-        transition={
-          reduceMotion
-            ? { duration: 0 }
-            : { type: "spring", stiffness: 160, damping: 22 }
-        }
-      />
     </div>
   )
 }
@@ -1551,7 +1612,7 @@ function DiscardedDrawer({
         <span className="inline-flex items-center gap-2">
           <ChevronDown
             className={cn(
-              "size-3.5 shrink-0 text-[#777] transition-transform",
+              "size-3.5 shrink-0 text-[#969696] transition-[color,transform] group-hover:text-[#777]",
               open ? "rotate-0" : "-rotate-90",
             )}
           />
@@ -1586,7 +1647,7 @@ function DiscardedDrawer({
               {rows.map((r) => (
                 <li
                   key={r.id}
-                  className="flex items-center justify-between gap-3 py-2.5"
+                  className="group flex items-center justify-between gap-3 py-2.5"
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <Logo domain={r.domain} name={r.name} size={24} />
@@ -1597,17 +1658,17 @@ function DiscardedDrawer({
                       {r.reasoning}
                     </span>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2 font-inter text-[11px]">
-                    <span className="tabular-nums text-muted-foreground">
+                  <div className="flex shrink-0 items-center justify-end gap-0 font-inter text-[11px] transition-[gap] duration-200 ease-out group-hover:gap-2 group-focus-within:gap-2">
+                    <span className="tabular-nums text-muted-foreground transition-transform duration-200 ease-out">
                       {r.score}
                     </span>
                     <button
                       type="button"
                       onClick={() => onRestore(r.id)}
-                      className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-[6px] border border-border bg-card px-2 text-muted-foreground transition hover:text-foreground hover:bg-secondary"
+                      className="pointer-events-none inline-flex h-6 max-w-0 cursor-pointer items-center gap-1 overflow-hidden rounded-[6px] border-0 bg-card px-0 text-muted-foreground opacity-0 transition-[max-width,opacity,padding,border-color] duration-200 ease-out hover:bg-secondary hover:text-foreground group-hover:pointer-events-auto group-hover:max-w-[5rem] group-hover:border group-hover:border-border group-hover:px-2 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:max-w-[5rem] group-focus-within:border group-focus-within:border-border group-focus-within:px-2 group-focus-within:opacity-100 focus-visible:pointer-events-auto focus-visible:max-w-[5rem] focus-visible:border focus-visible:border-border focus-visible:px-2 focus-visible:opacity-100"
                     >
-                      <Undo2 className="size-3" />
-                      Restore
+                      <Undo2 className="size-3 shrink-0" />
+                      <span className="shrink-0">Restore</span>
                     </button>
                   </div>
                 </li>
