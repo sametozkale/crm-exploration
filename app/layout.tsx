@@ -4,7 +4,8 @@ import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeColorMeta } from "@/components/theme-color-meta"
 import { Toaster } from "@/components/ui/sonner"
-import { siteConfig } from "@/lib/site"
+import { StructuredData } from "@/components/structured-data"
+import { absoluteUrl, siteConfig } from "@/lib/site"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -70,8 +71,15 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: "/",
+    types: {
+      "text/plain": siteConfig.paths.llms,
+    },
   },
   category: "technology",
+  other: {
+    "llms-txt": absoluteUrl(siteConfig.paths.llms),
+    "llms-full-txt": absoluteUrl(siteConfig.paths.llmsFull),
+  },
 }
 
 export const viewport: Viewport = {
@@ -94,6 +102,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} bg-background font-inter antialiased`}
       >
+        <StructuredData />
         <ThemeProvider>
           <ThemeColorMeta />
           {children}
