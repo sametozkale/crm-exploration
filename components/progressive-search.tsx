@@ -1,6 +1,14 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+} from "react"
+import { toast } from "sonner"
 import { useTheme } from "next-themes"
 import { AnimatePresence, motion, LayoutGroup } from "framer-motion"
 import {
@@ -11,9 +19,9 @@ import {
   ChevronDown,
   Filter,
   Info,
-  ScanSearch,
   Search,
   SearchX,
+  EditPrompt,
   MagicWand,
   Undo2,
   Users,
@@ -36,9 +44,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { ZeroWordmark } from "@/components/zero-wordmark"
 import { COMPANIES, type Company, type Tier } from "@/lib/data"
+import { isPromptRelevant } from "@/lib/prompt-match"
+import {
+  collapseVariants,
+  emptyStateChildVariants,
+  scaleFadeVariants,
+  useCollapseTransition,
+  useEmptyStateMotionProps,
+  useFadeSlideMotionProps,
+  useMotionTransition,
+  useRowMotionTransition,
+} from "@/lib/motion"
 import { resolveSvglLogo } from "@/lib/svgl-logos"
 import { cn } from "@/lib/utils"
 
@@ -103,10 +127,12 @@ export function ProgressiveSearch() {
   const [tierFilter, setTierFilter] = useState<TierFilter>("all")
   const [showDiscarded, setShowDiscarded] = useState(false)
   const [hoverId, setHoverId] = useState<string | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [promptRelevant, setPromptRelevant] = useState(true)
 
   const timeoutsRef = useRef<number[]>([])
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const searchGenerationRef = useRef(0)
+  const lastToastedGenerationRef = useRef(0)
 
   const clearTimers = () => {
     timeoutsRef.current.forEach((t) => window.clearTimeout(t))
@@ -117,6 +143,9 @@ export function ProgressiveSearch() {
 
   const startSearch = (q: string) => {
     clearTimers()
+    searchGenerationRef.current += 1
+    const relevant = isPromptRelevant(q)
+    setPromptRelevant(relevant)
     setPrompt(q)
     setRunning(true)
     setDone(false)
@@ -157,7 +186,11 @@ export function ProgressiveSearch() {
               r.id === row.id
                 ? {
                     ...r,
-                    state: r.tier === "low" ? "discarded" : "classified",
+                    state: !relevant
+                      ? "discarded"
+                      : r.tier === "low"
+                        ? "discarded"
+                        : "classified",
                     classifiedAt: Date.now(),
                   }
                 : r,
@@ -178,10 +211,11 @@ export function ProgressiveSearch() {
   }
 
   useEffect(() => {
-    const t = window.setTimeout(() => startSearch(DEFAULT_PROMPT), 350)
-    return () => window.clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!done) return
+    if (lastToastedGenerationRef.current === searchGenerationRef.current) return
+    lastToastedGenerationRef.current = searchGenerationRef.current
+    toast("Search completed", { icon: null })
+  }, [done])
 
   const submit = () => {
     if (!draft.trim()) return
@@ -216,19 +250,10 @@ export function ProgressiveSearch() {
   }, [survivingRows, sort])
 
   const discardedRows = useMemo(
-    () => rows.filter((r) => r.state === "discarded"),
-    [rows],
+    () =>
+      promptRelevant ? rows.filter((r) => r.state === "discarded") : [],
+    [rows, promptRelevant],
   )
-
-  const visibleRows = useMemo(() => {
-    if (tierFilter === "discarded") return discardedRows
-    const flat: EvalRow[] = []
-    for (const tier of TIERS_IN_ORDER) {
-      if (tierFilter !== "all" && tierFilter !== tier) continue
-      if (tierSectionsOpen[tier]) flat.push(...rowsByTier[tier])
-    }
-    return flat
-  }, [rowsByTier, tierSectionsOpen, tierFilter, discardedRows])
 
   const hasTierResults = TIERS_IN_ORDER.some(
     (tier) => rowsByTier[tier].length > 0,
@@ -247,19 +272,24 @@ export function ProgressiveSearch() {
         ? hasTierResults || discardedRows.length > 0
         : rowsByTier[tierFilter].length > 0
 
-  const progress = running
-    ? Math.min(100, (evaluatedCount / COMPANIES.length) * 100)
-    : 0
+  const isResultsIdle = !running && !done
+
+  const resultsPanelKey = useMemo(() => {
+    if (isResultsIdle) return "idle"
+    if (running && !hasVisibleResults) return "scanning"
+    if (!hasVisibleResults && done) {
+      return promptRelevant ? "no-match-empty" : "no-match-irrelevant"
+    }
+    return "results"
+  }, [isResultsIdle, running, hasVisibleResults, done, promptRelevant])
+
+  const fadeSlideProps = useFadeSlideMotionProps()
+  const collapseTransition = useCollapseTransition()
+  const actionTransition = useMotionTransition(0.18)
 
   const fakeEvaluated = Math.round(
     (evaluatedCount / COMPANIES.length) * TOTAL_CANDIDATES,
   )
-
-  const activeName =
-    activeIds
-      .map((id) => rows.find((r) => r.id === id)?.name ?? "")
-      .filter(Boolean)
-      .slice(-1)[0] ?? null
 
   const onKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -268,48 +298,46 @@ export function ProgressiveSearch() {
     }
   }
 
-  // Global keyboard navigation across the living result set.
+  const focusPromptAndSelectAll = () => {
+    const el = inputRef.current
+    if (!el) return
+    el.focus()
+    requestAnimationFrame(() => {
+      el.setSelectionRange(0, el.value.length)
+    })
+  }
+
+  const resetApp = () => {
+    clearTimers()
+    searchGenerationRef.current += 1
+    setRunning(false)
+    setDone(false)
+    setPrompt("")
+    setDraft("")
+    setEvaluatedCount(0)
+    setActiveIds([])
+    setShowDiscarded(false)
+    setTierFilter("all")
+    setTierSectionsOpen({ ...DEFAULT_TIER_SECTIONS_OPEN })
+    setPromptRelevant(true)
+    setHoverId(null)
+    setRows(COMPANIES.map((c) => ({ ...c, state: "pending" })))
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  // Focus prompt with "/" when not typing in a field.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null
       const typing = el?.tagName === "INPUT" || el?.tagName === "TEXTAREA"
-
       if (e.key === "/" && !typing) {
         e.preventDefault()
         inputRef.current?.focus()
-        return
-      }
-      if (typing) return
-      if ((e.key === "Escape" || e.key === "Esc") && selectedId) {
-        setSelectedId(null)
-        return
-      }
-      if (!visibleRows.length) return
-
-      const i = visibleRows.findIndex((r) => r.id === selectedId)
-      if (e.key === "ArrowDown" || e.key === "j") {
-        e.preventDefault()
-        const next = visibleRows[i < 0 ? 0 : Math.min(visibleRows.length - 1, i + 1)]
-        setSelectedId(next.id)
-      } else if (e.key === "ArrowUp" || e.key === "k") {
-        e.preventDefault()
-        const prev = visibleRows[i < 0 ? 0 : Math.max(0, i - 1)]
-        setSelectedId(prev.id)
-      } else if (e.key === "Enter" && selectedId) {
-        const row = visibleRows.find((r) => r.id === selectedId)
-        if (row) window.open(`https://${row.domain}`, "_blank", "noopener")
       }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [visibleRows, selectedId])
-
-  // Keep the selected row in view as the user navigates.
-  useEffect(() => {
-    if (!selectedId) return
-    const node = document.querySelector(`[data-row-id="${selectedId}"]`)
-    node?.scrollIntoView({ block: "nearest", behavior: "smooth" })
-  }, [selectedId])
+  }, [])
 
   return (
     <TooltipProvider delayDuration={120}>
@@ -317,16 +345,28 @@ export function ProgressiveSearch() {
       <BackgroundGrid />
 
       <div className="relative mx-auto max-w-6xl px-6 pt-12 pb-32 md:px-8">
-        <Header />
+        <Header onLogoClick={resetApp} />
 
         {/* Prompt */}
         <section className="mt-8">
           <div
             className={cn(
-              "group relative rounded-xl border bg-card transition-colors",
-              running ? "border-primary/40" : "border-border",
+              "group relative overflow-hidden rounded-xl transition-colors",
+              running ? "p-px" : "border border-border bg-card",
             )}
           >
+            {running && (
+              <div
+                className="prompt-card-shimmer-glow pointer-events-none absolute -inset-[120%] z-0"
+                aria-hidden
+              />
+            )}
+            <div
+              className={cn(
+                "relative z-[1] overflow-hidden bg-card",
+                running ? "prompt-card-surface-inset" : "rounded-xl",
+              )}
+            >
             <div className="flex items-center gap-3 px-4 py-3">
               <Search className="size-4 shrink-0 text-muted-foreground" />
               <textarea
@@ -338,182 +378,277 @@ export function ProgressiveSearch() {
                 placeholder="Describe what you're looking for…"
                 className="flex h-10 flex-1 resize-none items-center bg-transparent py-2.5 text-base leading-5 outline-none placeholder:text-muted-foreground/70"
               />
-              <div className="flex shrink-0 items-center gap-2">
-                {running ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      clearTimers()
-                      setRunning(false)
-                      setDone(true)
-                      setActiveIds([])
-                    }}
-                    className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-muted/50 px-3 font-inter text-[11px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="size-3 opacity-70" />
-                    Stop
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  onClick={submit}
-                  className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md bg-black px-2.5 font-inter text-[11px] font-medium text-white transition hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+              {(running || draft.trim().length > 0) && (
+                <div className="flex h-8 shrink-0 items-center gap-2">
+                  <AnimatePresence initial={false} mode="popLayout">
+                    {running ? (
+                      <motion.div
+                        key="stop"
+                        variants={scaleFadeVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        transition={actionTransition}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearTimers()
+                            setRunning(false)
+                            setDone(true)
+                            setActiveIds([])
+                          }}
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-muted/50 px-3 font-inter text-[11px] text-muted-foreground transition-colors hover:border-border/60 hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="size-3 opacity-70" />
+                          Stop
+                        </button>
+                      </motion.div>
+                    ) : null}
+                    {draft.trim().length > 0 ? (
+                      <motion.div
+                        key="run"
+                        variants={scaleFadeVariants}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        transition={actionTransition}
+                      >
+                        <button
+                          type="button"
+                          onClick={submit}
+                          className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md bg-black px-2.5 font-inter text-[12px] font-medium text-white transition hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200"
+                        >
+                          <MagicWand className="size-3 text-current" />
+                          {running ? "Re-run" : done ? "Run again" : "Run"}
+                        </button>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+
+            <AnimatePresence initial={false}>
+              {!isResultsIdle ? (
+                <motion.div
+                  key="status-bar"
+                  variants={collapseVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={collapseTransition}
+                  className="overflow-hidden"
                 >
-                  <MagicWand className="size-3 text-current" />
-                  {running ? "Re-run" : done ? "Run again" : "Run"}
-                </button>
-              </div>
-            </div>
+                  <div className="h-px bg-border" />
 
-            {/* Progress rule — primary fill only while evaluating */}
-            <div className="relative h-px overflow-hidden bg-border">
-              <AnimatePresence>
-                {running && (
-                  <>
-                    <motion.div
-                      key="scan"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 scanline"
-                    />
-                    <motion.div
-                      key="fill"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute left-0 top-0 h-full bg-primary transition-[width] duration-300 ease-out"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Status bar */}
-            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 font-inter text-[11px] text-muted-foreground">
-              <div className="flex min-w-0 flex-wrap items-center gap-3">
-                <span className="inline-flex items-center gap-1.5">
-                  <span
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      running
-                        ? "bg-primary animate-pulse"
-                        : done
-                          ? "bg-emerald-500"
-                          : "bg-muted-foreground/40",
-                    )}
-                  />
-                  {running ? "Evaluating" : done ? "Complete" : "Idle"}
-                </span>
-                {activeIds.length > 0 && (
-                  <>
-                    <span className="hidden sm:inline-block h-3 w-px bg-border" />
-                    <span className="hidden md:inline-flex min-w-0 items-center gap-1.5">
-                      <ArrowRight
-                        className="size-3 shrink-0 text-foreground/70 animate-nudge-right"
-                        aria-hidden
-                      />
-                      <span className="truncate">
-                        Scanning{" "}
-                        {activeIds
-                          .map(
-                            (id) => rows.find((r) => r.id === id)?.name ?? "",
-                          )
-                          .filter(Boolean)
-                          .join(", ")}
+                  {/* Status bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 font-inter text-[11px] text-muted-foreground">
+                    <div className="flex min-w-0 flex-wrap items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "size-1.5 shrink-0 rounded-full transition-colors duration-200",
+                            running
+                              ? "prompt-spectrum-dot animate-pulse"
+                              : done
+                                ? "bg-emerald-500"
+                                : "bg-muted-foreground/40",
+                          )}
+                        />
+                        <AnimatePresence mode="wait" initial={false}>
+                          <motion.span
+                            key={running ? "evaluating" : done ? "complete" : "ready"}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={actionTransition}
+                          >
+                            {running ? "Evaluating" : done ? "Complete" : "Ready"}
+                          </motion.span>
+                        </AnimatePresence>
                       </span>
+                      {running && (
+                        <>
+                          <span className="hidden sm:inline-block h-3 w-px bg-border" />
+                          <span className="inline-flex min-w-0 items-center gap-1.5">
+                            <span className="shrink-0">Scanning</span>
+                            {activeIds.length > 0 ? (
+                              <>
+                                <ArrowRight
+                                  className="hidden size-3 shrink-0 text-foreground/70 animate-nudge-right md:block"
+                                  aria-hidden
+                                />
+                                <span className="hidden truncate text-foreground/90 md:block">
+                                  {activeIds
+                                    .map(
+                                      (id) =>
+                                        rows.find((r) => r.id === id)?.name ?? "",
+                                    )
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </span>
+                              </>
+                            ) : null}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <span className="shrink-0 tabular-nums">
+                      {fakeEvaluated.toLocaleString()} /{" "}
+                      {TOTAL_CANDIDATES.toLocaleString()} Candidates
                     </span>
-                  </>
-                )}
-              </div>
-              <span className="shrink-0 tabular-nums">
-                {fakeEvaluated.toLocaleString()} /{" "}
-                {TOTAL_CANDIDATES.toLocaleString()} Candidates
-              </span>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
             </div>
           </div>
         </section>
 
         {/* Toolbar */}
-        <section className="mt-6 flex items-center justify-between gap-4">
+        <section className="mt-6 flex items-center justify-between gap-4 [&_.font-inter]:![letter-spacing:-0.01em]">
           <FilterControl
             value={tierFilter}
             onChange={setTierFilter}
             hasLowRows={rowsByTier.low.length > 0}
+            disabled={isResultsIdle}
           />
-          <SortControl sort={sort} onChange={setSort} />
+          <SortControl
+            sort={sort}
+            onChange={setSort}
+            disabled={isResultsIdle}
+          />
         </section>
 
         {/* Results list */}
         <section className="mt-4 overflow-hidden rounded-xl border border-border bg-card">
-          {hasVisibleResults && tierFilter !== "discarded" && (
-            <div className="grid grid-cols-12 gap-x-4 gap-y-1 border-b border-border bg-secondary/50 px-5 py-2.5 font-inter text-[11px] font-medium text-muted-foreground">
-              <div className="col-span-12 md:col-span-4">Company</div>
-              <div className="col-span-12 md:col-span-4">Match · reasoning</div>
-              <div className="hidden md:col-span-2 md:block">Signals</div>
-              <div className="hidden md:col-span-2 md:block text-right">Meta</div>
-            </div>
-          )}
+          <AnimatePresence mode="wait" initial={false}>
+            {resultsPanelKey === "results" ? (
+              <motion.div key="results" {...fadeSlideProps}>
+                {hasVisibleResults && tierFilter !== "discarded" && (
+                  <div className="grid grid-cols-12 gap-x-4 gap-y-1 border-b border-border bg-secondary/50 px-5 py-2.5 font-inter text-[11px] font-medium text-muted-foreground">
+                    <div className="col-span-12 md:col-span-4">Company</div>
+                    <div className="col-span-12 md:col-span-4">
+                      Score · Reasoning
+                    </div>
+                    <div className="hidden md:col-span-2 md:block">Signals</div>
+                    <div className="hidden md:col-span-2 md:block text-right">
+                      Meta
+                    </div>
+                  </div>
+                )}
 
-          <div className="divide-y divide-border">
-            <LayoutGroup>
-              {TIERS_IN_ORDER.map((tier) => {
-                if (!showTierSection(tier)) return null
-                const tierRows = rowsByTier[tier]
-                if (tierRows.length === 0) return null
-                return (
-                  <TierResultsSection
-                    key={tier}
-                    tier={tier}
-                    open={tierSectionsOpen[tier]}
-                    onToggle={() =>
-                      setTierSectionsOpen((cur) => ({
-                        ...cur,
-                        [tier]: !cur[tier],
-                      }))
-                    }
-                    rows={tierRows}
-                    selectedId={selectedId}
-                    hoverId={hoverId}
-                    onSelect={setSelectedId}
-                    onHover={setHoverId}
-                  />
-                )
-              })}
-            </LayoutGroup>
+                <div className="divide-y divide-border">
+                  <LayoutGroup>
+                    {TIERS_IN_ORDER.map((tier) => {
+                      if (!showTierSection(tier)) return null
+                      const tierRows = rowsByTier[tier]
+                      if (tierRows.length === 0) return null
+                      return (
+                        <TierResultsSection
+                          key={tier}
+                          tier={tier}
+                          open={tierSectionsOpen[tier]}
+                          onToggle={() =>
+                            setTierSectionsOpen((cur) => ({
+                              ...cur,
+                              [tier]: !cur[tier],
+                            }))
+                          }
+                          rows={tierRows}
+                          hoverId={hoverId}
+                          onHover={setHoverId}
+                        />
+                      )
+                    })}
+                  </LayoutGroup>
 
-            {showDiscardedSection && (
-              <DiscardedDrawer
-                open={tierFilter === "discarded" ? true : showDiscarded}
-                onToggle={() => {
-                  if (tierFilter === "discarded") return
-                  setShowDiscarded((s) => !s)
-                }}
-                rows={discardedRows}
-                onRestore={restoreRow}
-                pinnedOpen={tierFilter === "discarded"}
-              />
-            )}
-          </div>
+                  {promptRelevant && showDiscardedSection && (
+                    <DiscardedDrawer
+                      open={tierFilter === "discarded" ? true : showDiscarded}
+                      onToggle={() => {
+                        if (tierFilter === "discarded") return
+                        setShowDiscarded((s) => !s)
+                      }}
+                      rows={discardedRows}
+                      onRestore={restoreRow}
+                      pinnedOpen={tierFilter === "discarded"}
+                    />
+                  )}
+                </div>
+              </motion.div>
+            ) : null}
 
-          {/* Empty states */}
-          {!hasVisibleResults &&
-            (running ? (
-              <ScanningPlaceholder activeName={activeName} />
-            ) : (
+            {resultsPanelKey === "idle" ? (
               <EmptyState
+                key="idle"
+                variant="no-match"
+                size="lg"
+                icon={Search}
+                title="Run a search to see results"
+                body="Describe companies in plain language — we score matches, sort tiers, and park weak fits in Discarded."
+                action={{
+                  label: draft.trim() ? "Run search" : "Use sample prompt",
+                  icon: MagicWand,
+                  onClick: () => {
+                    const q = draft.trim() || DEFAULT_PROMPT
+                    if (!draft.trim()) setDraft(DEFAULT_PROMPT)
+                    startSearch(q)
+                  },
+                }}
+              />
+            ) : null}
+
+            {resultsPanelKey === "scanning" ? (
+              <ScanningPlaceholder key="scanning" />
+            ) : null}
+
+            {resultsPanelKey === "no-match-irrelevant" ? (
+              <EmptyState
+                key="no-match-irrelevant"
+                variant="no-match"
+                icon={SearchX}
+                title="Unfortunately, no matching results"
+                body={
+                  <>
+                    We couldn&apos;t find companies in our index for this
+                    prompt.
+                    <br />
+                    Try describing the sector, signals, or type of company you
+                    want.
+                  </>
+                }
+                hints={[
+                  "Be specific — e.g. AI lab, enterprise SaaS, Series B",
+                  "Add signals like alumni, geography, or funding stage",
+                  "Avoid unrelated keywords that don't match our dataset",
+                ]}
+                action={{
+                  label: "Edit prompt",
+                  onClick: focusPromptAndSelectAll,
+                }}
+              />
+            ) : null}
+
+            {resultsPanelKey === "no-match-empty" ? (
+              <EmptyState
+                key="no-match-empty"
+                variant="no-match"
                 icon={SearchX}
                 title="No strong matches found"
-                body="Nothing cleared the bar for this prompt. Try broadening the criteria or loosening a constraint, then run again."
+                body="Nothing cleared the bar for this prompt. Loosen a constraint or broaden the criteria, then run again."
+                hints={[
+                  "Remove the strictest filter in your prompt",
+                  "Try related sectors or adjacent company types",
+                ]}
                 action={{
                   label: "Refine prompt",
-                  onClick: () => inputRef.current?.focus(),
+                  onClick: focusPromptAndSelectAll,
                 }}
               />
-            ))}
-
+            ) : null}
+          </AnimatePresence>
         </section>
 
       </div>
@@ -524,11 +659,22 @@ export function ProgressiveSearch() {
 
 /* ───────── components ────────── */
 
-function Header() {
+function Header({ onLogoClick }: { onLogoClick?: () => void }) {
   return (
     <header className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2.5">
-        <ZeroWordmark />
+        {onLogoClick ? (
+          <button
+            type="button"
+            onClick={onLogoClick}
+            className="cursor-pointer rounded-sm border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            aria-label="Reset and edit prompt"
+          >
+            <ZeroWordmark />
+          </button>
+        ) : (
+          <ZeroWordmark />
+        )}
         <span className="mx-0.5 h-4 w-px bg-border" />
         <span className="font-inter text-[11px] uppercase text-muted-foreground">
           progressive search
@@ -545,62 +691,214 @@ function BackgroundGrid() {
   )
 }
 
+function EmptyStateHintsList({ hints }: { hints: string[] }) {
+  return (
+    <ul className="space-y-2 font-inter text-[11px] leading-relaxed text-muted-foreground">
+      {hints.map((hint) => (
+        <li key={hint} className="flex gap-2.5">
+          <span
+            className="mt-[0.35rem] size-1 shrink-0 rounded-full bg-muted-foreground/45"
+            aria-hidden
+          />
+          <span>{hint}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function EmptyStateHintsPopover({ hints }: { hints: string[] }) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="absolute right-4 bottom-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex size-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+            aria-label="Search tips"
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+          >
+            <Info className="size-3.5 shrink-0" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          side="top"
+          align="end"
+          sideOffset={8}
+          className="w-auto max-w-[26rem] border-border p-0 shadow-lg"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+        >
+          <div className="px-4 py-3.5">
+            <EmptyStateHintsList hints={hints} />
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
 function EmptyState({
+  variant = "default",
+  size = "default",
   icon: Icon,
   title,
   body,
+  hints,
   action,
 }: {
-  icon: React.ComponentType<{ className?: string }>
+  variant?: "default" | "no-match"
+  size?: "default" | "lg"
+  icon: ComponentType<{ className?: string }>
   title: string
-  body: string
-  action?: { label: string; onClick: () => void }
+  body: React.ReactNode
+  hints?: string[]
+  action?: {
+    label: string
+    onClick: () => void
+    icon?: ComponentType<{ className?: string }>
+  }
 }) {
+  const isNoMatch = variant === "no-match"
+  const ActionIcon = action?.icon ?? (isNoMatch ? EditPrompt : null)
+  const emptyMotion = useEmptyStateMotionProps()
+  const childTransition = useMotionTransition(0.2)
+
+  const contentClass = cn(
+    "mx-auto flex w-full max-w-md flex-col items-center",
+    emptyMotion.stagger && "contents",
+  )
+
+  const IconBlock = (
+    <div
+      className={cn(
+        "relative mb-5 flex items-center justify-center",
+        isNoMatch
+          ? "size-11 rounded-xl border border-border/80 bg-gradient-to-b from-secondary/90 to-secondary/30"
+          : "size-12 rounded-xl border border-border bg-secondary",
+      )}
+    >
+      {isNoMatch ? (
+        <span
+          className="pointer-events-none absolute -inset-px rounded-xl opacity-70"
+          style={{
+            background:
+              "linear-gradient(135deg, color-mix(in oklch, var(--spectrum-2) 22%, transparent), transparent 45%, color-mix(in oklch, var(--spectrum-5) 18%, transparent))",
+          }}
+          aria-hidden
+        />
+      ) : (
+        <span className="absolute inset-0 rounded-xl bg-primary/5" aria-hidden />
+      )}
+      <Icon
+        className={cn(
+          "relative text-muted-foreground",
+          isNoMatch ? "size-[18px]" : "size-5",
+        )}
+      />
+    </div>
+  )
+
+  const TitleBlock = (
+    <h3
+      className={cn(
+        "font-sans font-semibold tracking-tight text-foreground",
+        isNoMatch ? "text-base sm:text-[17px]" : "text-sm",
+      )}
+    >
+      {title}
+    </h3>
+  )
+
+  const BodyBlock = (
+    <p
+      className={cn(
+        "mt-2 text-pretty leading-relaxed text-muted-foreground",
+        isNoMatch
+          ? "max-w-[26rem] text-[13px] sm:text-sm"
+          : "max-w-sm text-[13px]",
+      )}
+    >
+      {body}
+    </p>
+  )
+
+  const ActionBlock = action ? (
+    <button
+      type="button"
+      onClick={action.onClick}
+      className={cn(
+        "mt-6 inline-flex h-8 cursor-pointer items-center gap-1 rounded-md font-inter text-[11px] font-medium transition",
+        isNoMatch
+          ? "border border-border bg-white px-2.5 text-[#777] transition-colors hover:border-[#eee] hover:bg-white hover:text-[#646464] dark:border-border dark:bg-white dark:text-[#323232] dark:hover:border-neutral-500 dark:hover:bg-white dark:hover:text-[#323232]"
+          : "border border-border bg-card px-3 text-foreground hover:bg-secondary",
+      )}
+    >
+      {ActionIcon ? (
+        <ActionIcon className="size-3 shrink-0 text-current" />
+      ) : null}
+      {action.label}
+    </button>
+  ) : null
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="flex flex-col items-center justify-center px-6 py-16 text-center"
+      variants={emptyMotion.variants}
+      initial={emptyMotion.initial}
+      animate={emptyMotion.animate}
+      exit={emptyMotion.exit}
+      transition={emptyMotion.transition}
+      className={cn(
+        "flex w-full flex-col items-center justify-center px-6 text-center",
+        isNoMatch
+          ? size === "lg"
+            ? "group relative min-h-[min(28rem,58vh)] py-16 sm:py-20"
+            : "group relative min-h-[min(22rem,52vh)] py-14 sm:py-16"
+          : "py-16",
+      )}
     >
-      <div className="relative mb-4 flex size-12 items-center justify-center rounded-xl border border-border bg-secondary">
-        <span className="absolute inset-0 rounded-xl bg-primary/5" />
-        <Icon className="size-5 text-muted-foreground" />
-      </div>
-      <h3 className="font-sans text-sm font-semibold tracking-tight text-foreground">
-        {title}
-      </h3>
-      <p className="mt-1.5 max-w-sm text-pretty text-[13px] leading-relaxed text-muted-foreground">
-        {body}
-      </p>
-      {action && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className="mt-4 inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-3 font-inter text-[11px] text-foreground transition hover:bg-secondary"
-        >
-          {action.label}
-        </button>
+      {isNoMatch && hints && hints.length > 0 ? (
+        <EmptyStateHintsPopover hints={hints} />
+      ) : null}
+      {emptyMotion.stagger ? (
+        <div className="mx-auto flex w-full max-w-md flex-col items-center">
+          <motion.div variants={emptyStateChildVariants} transition={childTransition}>
+            {IconBlock}
+          </motion.div>
+          <motion.div variants={emptyStateChildVariants} transition={childTransition}>
+            {TitleBlock}
+          </motion.div>
+          <motion.div variants={emptyStateChildVariants} transition={childTransition}>
+            {BodyBlock}
+          </motion.div>
+          {action ? (
+            <motion.div variants={emptyStateChildVariants} transition={childTransition}>
+              {ActionBlock}
+            </motion.div>
+          ) : null}
+        </div>
+      ) : (
+        <div className={contentClass}>
+          {IconBlock}
+          {TitleBlock}
+          {BodyBlock}
+          {ActionBlock}
+        </div>
       )}
     </motion.div>
   )
 }
 
-function ScanningPlaceholder({ activeName }: { activeName: string | null }) {
+function ScanningPlaceholder() {
+  const fadeSlideProps = useFadeSlideMotionProps()
   return (
-    <div className="px-5 py-8">
-      <div className="flex items-center justify-center gap-2 pb-6 font-inter text-[11px] text-muted-foreground">
-        <ScanSearch className="size-3.5 text-primary" />
-        <span>
-          Evaluating candidates
-          {activeName ? (
-            <>
-              {" · "}
-              <span className="text-foreground/80">{activeName}</span>
-            </>
-          ) : null}
-        </span>
-      </div>
+    <motion.div
+      {...fadeSlideProps}
+      className="min-h-[min(22rem,52vh)] p-5"
+    >
       <ul className="space-y-3" aria-hidden>
         {[0, 1, 2].map((i) => (
           <li
@@ -609,20 +907,20 @@ function ScanningPlaceholder({ activeName }: { activeName: string | null }) {
             style={{ opacity: 1 - i * 0.28 }}
           >
             <span className="size-9 shrink-0 overflow-hidden rounded-md border border-border bg-secondary">
-              <span className="block size-full scanline opacity-40" />
+              <span className="block size-full scanline-muted opacity-40" />
             </span>
             <div className="flex-1 space-y-2">
               <span className="block h-2.5 w-1/3 overflow-hidden rounded bg-secondary">
-                <span className="block size-full scanline opacity-40" />
+                <span className="block size-full scanline-muted opacity-40" />
               </span>
               <span className="block h-2 w-2/3 overflow-hidden rounded bg-secondary">
-                <span className="block size-full scanline opacity-30" />
+                <span className="block size-full scanline-muted opacity-30" />
               </span>
             </div>
           </li>
         ))}
       </ul>
-    </div>
+    </motion.div>
   )
 }
 
@@ -673,20 +971,19 @@ function TierResultsSection({
   open,
   onToggle,
   rows,
-  selectedId,
   hoverId,
-  onSelect,
   onHover,
 }: {
   tier: Tier
   open: boolean
   onToggle: () => void
   rows: EvalRow[]
-  selectedId: string | null
   hoverId: string | null
-  onSelect: (id: string) => void
   onHover: (id: string | null) => void
 }) {
+  const collapseTransition = useCollapseTransition()
+  const rowTransition = useRowMotionTransition()
+
   return (
     <div>
       <button
@@ -715,10 +1012,11 @@ function TierResultsSection({
         {open && (
           <motion.div
             key="tier-rows"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            variants={collapseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={collapseTransition}
             className="overflow-hidden"
           >
             <ul className="divide-y divide-border">
@@ -726,30 +1024,20 @@ function TierResultsSection({
                 {rows.map((row) => (
                   <motion.li
                     key={row.id}
-                    layout
+                    layout={rowTransition.layout}
                     data-row-id={row.id}
-                    initial={{ opacity: 0, y: 4 }}
+                    initial={{ opacity: 0, y: rowTransition.enterY }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{
-                      layout: { type: "spring", stiffness: 400, damping: 36 },
-                      opacity: { duration: 0.16 },
-                      y: { duration: 0.16 },
-                    }}
+                    exit={{ opacity: 0, y: rowTransition.exitY }}
+                    transition={rowTransition.transition}
                     onMouseEnter={() => onHover(row.id)}
                     onMouseLeave={() => onHover(null)}
-                    onClick={() => onSelect(row.id)}
                     className={cn(
-                      "group relative grid cursor-pointer grid-cols-12 gap-x-4 gap-y-2 px-5 py-3.5 outline-none transition-colors md:gap-y-0",
+                      "group relative grid grid-cols-12 gap-x-4 gap-y-2 px-5 py-3.5 outline-none transition-colors md:gap-y-0",
                       "hover:bg-secondary/50",
-                      selectedId === row.id
-                        ? "bg-secondary/70"
-                        : hoverId === row.id && "bg-secondary/50",
+                      hoverId === row.id && "bg-secondary/50",
                     )}
                   >
-                    {selectedId === row.id && (
-                      <span className="absolute inset-y-0 left-0 w-0.5 bg-primary" />
-                    )}
                     <Row row={row} />
                   </motion.li>
                 ))}
@@ -765,22 +1053,15 @@ function TierResultsSection({
 type FilterOption = {
   key: TierFilter
   label: string
-  dotClass?: string
 }
 
 function filterOptions(hasLowRows: boolean): FilterOption[] {
   return [
     { key: "all", label: "All" },
-    { key: "high", label: "High", dotClass: "bg-emerald-500" },
-    { key: "medium", label: "Medium", dotClass: "bg-tier-medium" },
-    ...(hasLowRows
-      ? [{ key: "low" as const, label: "Low", dotClass: "bg-muted-foreground" }]
-      : []),
-    {
-      key: "discarded",
-      label: "Discarded",
-      dotClass: "bg-muted-foreground/40",
-    },
+    { key: "high", label: "High" },
+    { key: "medium", label: "Medium" },
+    ...(hasLowRows ? [{ key: "low" as const, label: "Low" }] : []),
+    { key: "discarded", label: "Discarded" },
   ]
 }
 
@@ -788,32 +1069,33 @@ function FilterControl({
   value,
   onChange,
   hasLowRows,
+  disabled = false,
 }: {
   value: TierFilter
   onChange: (value: TierFilter) => void
   hasLowRows: boolean
+  disabled?: boolean
 }) {
   const options = filterOptions(hasLowRows)
   const selected = options.find((o) => o.key === value) ?? options[0]
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild disabled={disabled}>
         <button
           type="button"
+          disabled={disabled}
           aria-label={`Filter: ${selected.label}`}
-          className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border bg-white px-2.5 font-inter text-[11px] text-foreground transition-colors hover:bg-secondary/40 dark:bg-card"
+          aria-disabled={disabled}
+          className={cn(
+            "inline-flex h-8 items-center gap-2 rounded-md border border-border bg-white px-2.5 font-inter text-[11px] text-foreground transition-colors dark:bg-card",
+            disabled
+              ? "cursor-not-allowed opacity-50"
+              : "cursor-pointer hover:bg-secondary/40",
+          )}
         >
           <Filter className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          <span className="inline-flex items-center gap-1.5 font-medium">
-            {selected.dotClass && (
-              <span
-                className={cn("size-1.5 shrink-0 rounded-full", selected.dotClass)}
-                aria-hidden
-              />
-            )}
-            {selected.label}
-          </span>
+          <span className="font-medium">{selected.label}</span>
           <ChevronDown className="size-3 shrink-0 text-muted-foreground" aria-hidden />
         </button>
       </DropdownMenuTrigger>
@@ -826,18 +1108,10 @@ function FilterControl({
             key={o.key}
             onSelect={() => onChange(o.key)}
             className={cn(
-              "cursor-pointer gap-2 py-1.5 text-[11px] focus:bg-secondary/60 focus:text-foreground",
+              "cursor-pointer py-1.5 text-[11px] focus:bg-secondary/60 focus:text-foreground",
               value === o.key && "bg-secondary/60 font-medium",
             )}
           >
-            {o.dotClass ? (
-              <span
-                className={cn("size-1.5 shrink-0 rounded-full", o.dotClass)}
-                aria-hidden
-              />
-            ) : (
-              <span className="size-1.5 shrink-0" aria-hidden />
-            )}
             {o.label}
           </DropdownMenuItem>
         ))}
@@ -849,9 +1123,11 @@ function FilterControl({
 function SortControl({
   sort,
   onChange,
+  disabled = false,
 }: {
   sort: { key: SortKey; dir: SortDir }
   onChange: (s: { key: SortKey; dir: SortDir }) => void
+  disabled?: boolean
 }) {
   const opts: { key: SortKey; label: string }[] = [
     { key: "score", label: "Match" },
@@ -863,7 +1139,11 @@ function SortControl({
     <div
       role="group"
       aria-label="Sort by"
-      className="inline-flex h-8 items-center gap-0.5 rounded-md border border-border bg-white p-0.5 font-inter text-[11px] dark:bg-card"
+      aria-disabled={disabled}
+      className={cn(
+        "inline-flex h-8 items-center gap-0.5 rounded-md border border-border bg-white p-0.5 font-inter text-[11px] dark:bg-card",
+        disabled && "pointer-events-none opacity-50",
+      )}
     >
       {opts.map((o) => {
         const selected = sort.key === o.key
@@ -871,6 +1151,7 @@ function SortControl({
           <button
             key={o.key}
             type="button"
+            disabled={disabled}
             aria-pressed={selected}
             onClick={() =>
               onChange({
@@ -886,10 +1167,16 @@ function SortControl({
               })
             }
             className={cn(
-              "inline-flex h-full cursor-pointer items-center gap-1 rounded-inset-control px-2.5 transition-colors duration-150",
+              "inline-flex h-full items-center gap-1 rounded-inset-control px-2.5 transition-colors duration-150",
+              disabled
+                ? "cursor-not-allowed"
+                : "cursor-pointer",
               selected
                 ? "bg-muted/60 font-medium text-foreground"
-                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
+                : "text-muted-foreground",
+              !disabled &&
+                !selected &&
+                "hover:bg-muted/40 hover:text-foreground",
             )}
           >
             {o.label}
@@ -1216,13 +1503,20 @@ function ScoreBar({ score, tier }: { score: number; tier: Tier }) {
       : tier === "medium"
         ? "bg-tier-medium"
         : "bg-muted-foreground"
+  const barTransition = useMotionTransition(0)
+  const reduceMotion = barTransition.duration === 0
+
   return (
     <div className="relative h-1 w-full min-w-[80px] max-w-[200px] flex-1 overflow-hidden rounded-full bg-secondary">
       <motion.div
         className={cn("absolute inset-y-0 left-0", color)}
         initial={{ width: 0 }}
         animate={{ width: `${score}%` }}
-        transition={{ type: "spring", stiffness: 160, damping: 22 }}
+        transition={
+          reduceMotion
+            ? { duration: 0 }
+            : { type: "spring", stiffness: 160, damping: 22 }
+        }
       />
     </div>
   )
@@ -1241,6 +1535,8 @@ function DiscardedDrawer({
   onRestore: (id: string) => void
   pinnedOpen?: boolean
 }) {
+  const collapseTransition = useCollapseTransition()
+
   return (
     <div>
       <button
@@ -1274,10 +1570,11 @@ function DiscardedDrawer({
         {open && (
           <motion.div
             key="drawer"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
+            variants={collapseVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={collapseTransition}
             className="overflow-hidden"
           >
             <ul className="divide-y divide-border/60 px-5 py-3">
@@ -1307,7 +1604,7 @@ function DiscardedDrawer({
                     <button
                       type="button"
                       onClick={() => onRestore(r.id)}
-                      className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-[5px] border border-border bg-card px-2 text-muted-foreground transition hover:text-foreground hover:bg-secondary"
+                      className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-[6px] border border-border bg-card px-2 text-muted-foreground transition hover:text-foreground hover:bg-secondary"
                     >
                       <Undo2 className="size-3" />
                       Restore

@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import 'sonner/dist/styles.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -40,6 +41,14 @@ html.light {
 
   --grid-dot: oklch(0 0 0 / 0.06);
 
+  /* Prompt loading spectrum (shimmer + progress) */
+  --spectrum-1: #9ada51;
+  --spectrum-2: #6ec6f8;
+  --spectrum-3: #a581ff;
+  --spectrum-4: #df9cff;
+  --spectrum-5: #ff93ad;
+  --spectrum-6: #ffac6d;
+
   --radius: 0.625rem;
 }
 
@@ -78,6 +87,13 @@ html.light {
   --tier-low-foreground: oklch(0.99 0 0);
 
   --grid-dot: oklch(1 0 0 / 0.06);
+
+  --spectrum-1: #9ada51;
+  --spectrum-2: #6ec6f8;
+  --spectrum-3: #a581ff;
+  --spectrum-4: #df9cff;
+  --spectrum-5: #ff93ad;
+  --spectrum-6: #ffac6d;
 }
 
 @theme inline {
@@ -111,6 +127,13 @@ html.light {
   --color-tier-medium-foreground: var(--tier-medium-foreground);
   --color-tier-low: var(--tier-low);
   --color-tier-low-foreground: var(--tier-low-foreground);
+
+  --color-spectrum-1: var(--spectrum-1);
+  --color-spectrum-2: var(--spectrum-2);
+  --color-spectrum-3: var(--spectrum-3);
+  --color-spectrum-4: var(--spectrum-4);
+  --color-spectrum-5: var(--spectrum-5);
+  --color-spectrum-6: var(--spectrum-6);
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -157,6 +180,12 @@ html.light {
   }
 }
 
+@property --orbit-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 /* Utilities */
 @layer utilities {
   /* Segmented control: outer radius minus track padding (p-0.5) */
@@ -168,15 +197,36 @@ html.light {
     background-image: linear-gradient(
       90deg,
       transparent 0%,
-      color-mix(in oklch, var(--primary) 60%, transparent) 50%,
+      var(--spectrum-1) 14%,
+      var(--spectrum-2) 28%,
+      var(--spectrum-3) 42%,
+      var(--spectrum-4) 56%,
+      var(--spectrum-5) 70%,
+      var(--spectrum-6) 84%,
       transparent 100%
     );
-    background-size: 200% 100%;
-    animation: scan 1.4s linear infinite;
+    background-size: 220% 100%;
+    animation: scan 5.5s linear infinite;
   }
   @keyframes scan {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
+  }
+
+  /* ScanningPlaceholder skeleton — gray shimmer only */
+  .scanline-muted {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklch, var(--border) 65%, transparent) 18%,
+      color-mix(in oklch, var(--muted-foreground) 22%, var(--secondary)) 38%,
+      color-mix(in oklch, var(--muted-foreground) 32%, var(--secondary)) 50%,
+      color-mix(in oklch, var(--muted-foreground) 22%, var(--secondary)) 62%,
+      color-mix(in oklch, var(--border) 65%, transparent) 82%,
+      transparent 100%
+    );
+    background-size: 220% 100%;
+    animation: scan 5.5s linear infinite;
   }
 
   /* Subtle dotted grid à la zero.inc */
@@ -186,6 +236,53 @@ html.light {
     background-size: 28px 28px;
     -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
             mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+  }
+
+  /* Prompt card — one spectrum wedge orbits clockwise; never splits at 0/360 */
+  .prompt-card-shimmer-glow {
+    --orbit-angle: 0deg;
+    background: conic-gradient(
+      from var(--orbit-angle),
+      var(--border) 0deg 248deg,
+      color-mix(in oklch, var(--spectrum-1) 35%, var(--border)) 254deg,
+      var(--spectrum-1) 262deg,
+      var(--spectrum-2) 270deg,
+      var(--spectrum-3) 278deg,
+      var(--spectrum-4) 286deg,
+      var(--spectrum-5) 294deg,
+      var(--spectrum-6) 302deg,
+      color-mix(in oklch, var(--spectrum-6) 35%, var(--border)) 308deg,
+      var(--border) 314deg 360deg
+    );
+    animation: prompt-shimmer-orbit 3.6s linear infinite;
+  }
+
+  .prompt-spectrum-dot {
+    background: linear-gradient(
+      135deg,
+      var(--spectrum-1),
+      var(--spectrum-3),
+      var(--spectrum-5),
+      var(--spectrum-6)
+    );
+  }
+
+  @keyframes prompt-shimmer-orbit {
+    to {
+      --orbit-angle: 360deg;
+    }
+  }
+
+  .prompt-card-surface-inset {
+    border-radius: calc(var(--radius-xl) - 1px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .prompt-card-shimmer-glow {
+      animation: none;
+      transform: none;
+      background: var(--border);
+    }
   }
 
   @keyframes nudge-right {
@@ -208,4 +305,26 @@ html.light {
       opacity: 0.7;
     }
   }
+}
+
+/* Sonner: stay fully inside the viewport (bottom-right) */
+[data-sonner-toaster] {
+  --width: max-content;
+  max-width: calc(100vw - 3rem);
+}
+
+[data-sonner-toaster][data-x-position='right'] {
+  right: max(1.5rem, env(safe-area-inset-right)) !important;
+  left: auto !important;
+}
+
+[data-sonner-toaster][data-y-position='bottom'] {
+  bottom: max(1.5rem, env(safe-area-inset-bottom)) !important;
+  top: auto !important;
+}
+
+[data-sonner-toast][data-styled='true'] {
+  width: max-content !important;
+  max-width: calc(100vw - 3rem);
+  --toast-padding: 6px 12px;
 }

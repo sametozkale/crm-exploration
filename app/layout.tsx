@@ -3,6 +3,8 @@ import { Geist, Geist_Mono, Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeColorMeta } from "@/components/theme-color-meta"
+import { Toaster } from "@/components/ui/sonner"
+import { siteConfig } from "@/lib/site"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -19,14 +21,67 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Zero — Progressive Search",
-  description:
-    "Type a prompt. Watch thousands of candidates evaluated, classified, and ranked in real time.",
-  generator: "v0.app",
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: siteConfig.fullTitle,
+    template: `%s · ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  authors: [{ name: siteConfig.name }],
+  creator: siteConfig.name,
+  keywords: [...siteConfig.keywords],
+  icons: {
+    icon: [{ url: siteConfig.ogImage, type: "image/png", sizes: "200x200" }],
+    shortcut: siteConfig.ogImage,
+    apple: siteConfig.ogImage,
+  },
+  openGraph: {
+    type: "website",
+    locale: siteConfig.locale,
+    url: "/",
+    siteName: siteConfig.name,
+    title: siteConfig.fullTitle,
+    description: siteConfig.description,
+    images: [
+      {
+        url: siteConfig.ogImage,
+        width: 200,
+        height: 200,
+        alt: `${siteConfig.name} logo`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: siteConfig.fullTitle,
+    description: siteConfig.description,
+    images: [siteConfig.ogImage],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
+  category: "technology",
 }
 
 export const viewport: Viewport = {
-  themeColor: "#fafafa",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  colorScheme: "light dark",
 }
 
 export default function RootLayout({
@@ -42,6 +97,7 @@ export default function RootLayout({
         <ThemeProvider>
           <ThemeColorMeta />
           {children}
+          <Toaster />
         </ThemeProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>

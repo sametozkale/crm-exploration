@@ -4,6 +4,7 @@ import { forwardRef } from "react"
 import { HugeiconsIcon } from "@hugeicons/react"
 import type { IconSvgElement } from "@hugeicons/react"
 import {
+  AiEditingIcon,
   AiSearchIcon,
   ArrowDownWideNarrowIcon,
   ArrowLeft01Icon,
@@ -96,6 +97,7 @@ export const ChevronRight = createIcon(ChevronRightIconSvg, "ChevronRight")
 export const CornerDownLeft = createIcon(CornerDownLeftIcon, "CornerDownLeft")
 export const Filter = createIcon(FilterIconSvg, "Filter")
 export const Info = createIcon(InformationCircleIcon, "Info")
+export const EditPrompt = createIcon(AiEditingIcon, "EditPrompt")
 export const ScanSearch = createIcon(AiSearchIcon, "ScanSearch")
 export const Search = createIcon(Search01Icon, "Search")
 export const SearchX = createIcon(SearchRemoveIcon, "SearchX")
