@@ -18,9 +18,19 @@ export const DEMO2_HOME_SHELL_FADE = {
   ease: DEMO2_SHELL_EASE,
 } as const
 
-/** Gray prompt shell fades before the card flies to chat. */
-export const DEMO2_PROMPT_SHELL_EXIT = {
-  duration: 0.14,
+/** Gray prompt shell shrinks into the white card before flight. */
+export const DEMO2_PROMPT_SHELL_COLLAPSE = {
+  duration: 0.34,
+  ease: DEMO2_SHELL_EASE,
+} as const
+
+/** @deprecated Use DEMO2_PROMPT_SHELL_COLLAPSE */
+export const DEMO2_PROMPT_SHELL_EXIT = DEMO2_PROMPT_SHELL_COLLAPSE
+
+/** Chat input actions appear after prompt flight lands. */
+export const DEMO2_CHAT_INPUT_ACTIONS_ENTRANCE = {
+  delay: 0.08,
+  duration: 0.32,
   ease: DEMO2_SHELL_EASE,
 } as const
 

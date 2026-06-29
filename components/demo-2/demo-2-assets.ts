@@ -54,6 +54,9 @@ export const DEMO2_ASSETS = {
   toolbarFindSimilars: "https://www.figma.com/api/mcp/asset/42aa4485-22f2-4b32-9427-a102b3c43c63",
   toolbarReview: "https://www.figma.com/api/mcp/asset/995f9d05-7798-46da-b7b9-8996acdfa18a",
   resultsAddToList: "/demo-2/results/add-to-list.svg",
+  resultsNoMatchSearch: "/demo-2/results/no-match-search.svg",
+  /** Figma 114:37524 */
+  resultsAiSearch: "/demo-2/results/no-match-ai-search.svg",
   companyClearline: `${COMPANIES}/clearline.jpg`,
   companyRiot: `${COMPANIES}/riot.jpg`,
   companyVouch: `${COMPANIES}/vouch.jpg`,

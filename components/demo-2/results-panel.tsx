@@ -185,6 +185,19 @@ function SourceAvatarStack({
   )
 }
 
+function NoSourceTab() {
+  return (
+    <div
+      className={cn(SOURCE_TAB_BUTTON_CLASS, "cursor-default")}
+      style={{ height: DEMO2_SIZES.tabHeight }}
+    >
+      <span className="text-[12px] leading-4 tracking-[-0.12px] text-[#646464]">
+        No source
+      </span>
+    </div>
+  )
+}
+
 function SourceTabButton({
   tab,
   hovered,
@@ -247,6 +260,7 @@ function ToolbarPill({
   style,
   children,
   label,
+  disabled,
   ...props
 }: React.ComponentProps<"button"> & {
   label?: string
@@ -255,7 +269,12 @@ function ToolbarPill({
     <button
       type="button"
       aria-label={label}
-      className={cn(DEMO2_TOOLBAR_PILL, className)}
+      disabled={disabled}
+      className={cn(
+        DEMO2_TOOLBAR_PILL,
+        disabled && "cursor-not-allowed opacity-60",
+        className,
+      )}
       style={style}
       {...props}
     >
@@ -304,12 +323,12 @@ function SearchToolbarPill({
   const pillClass = cn(
     DEMO2_TOOLBAR_PILL,
     "group/search-pill overflow-hidden transition-[width,gap] duration-[250ms]",
-    disabled && "pointer-events-none opacity-60",
+    disabled && "cursor-not-allowed opacity-60",
     active || hoverExpanded
       ? "flex w-[148px] items-center justify-start gap-[6px]"
       : cn(
           "group flex w-10 items-center justify-center gap-0",
-          "hover:w-[148px] hover:justify-start hover:gap-[6px]",
+          "enabled:hover:w-[148px] enabled:hover:justify-start enabled:hover:gap-[6px]",
         ),
   )
 
@@ -391,11 +410,13 @@ function SearchToolbarPill({
           "overflow-hidden whitespace-nowrap text-[14px] font-normal leading-4 tracking-[-0.14px] text-[#aaa]",
           hoverExpanded
             ? "max-w-[80px] opacity-100"
-            : cn(
-                "max-w-0 opacity-0 transition-[max-width,opacity] duration-[250ms]",
-                "group-hover:max-w-[80px] group-hover:opacity-100",
-                "group-focus-visible:max-w-[80px] group-focus-visible:opacity-100",
-              ),
+            : disabled
+              ? "max-w-0 opacity-0"
+              : cn(
+                  "max-w-0 opacity-0 transition-[max-width,opacity] duration-[250ms]",
+                  "group-hover:max-w-[80px] group-hover:opacity-100",
+                  "group-focus-visible:max-w-[80px] group-focus-visible:opacity-100",
+                ),
         )}
         style={hoverExpanded ? undefined : { transitionTimingFunction: SEARCH_PILL_EASE }}
         aria-hidden
@@ -1033,7 +1054,7 @@ function StaggerEntranceItem({
 
 function ResultsSelectionActions({ count }: { count: number }) {
   return (
-    <div className="ml-auto flex items-center gap-3 rounded-[10px] bg-[#f9f9f9] py-[2px] pl-3 pr-[2px]">
+    <div className="flex items-center gap-3 rounded-[10px] bg-[#f9f9f9] py-[2px] pl-3 pr-[2px]">
       <span className="text-[12px] leading-4 tracking-[-0.12px] text-[#777]">
         {count} selected
       </span>
@@ -1057,6 +1078,7 @@ function ResultsSelectionActions({ count }: { count: number }) {
 
 function ResultsToolbar({
   scanning = false,
+  noMatchEmpty = false,
   isPublic,
   onTogglePublic,
   titleSearchOpen,
@@ -1066,6 +1088,7 @@ function ResultsToolbar({
   selectedCount,
 }: {
   scanning?: boolean
+  noMatchEmpty?: boolean
   isPublic: boolean
   onTogglePublic: () => void
   titleSearchOpen: boolean
@@ -1076,6 +1099,7 @@ function ResultsToolbar({
 }) {
   const hasSelection = !scanning && selectedCount > 0
   const searchActive = hasSelection || titleSearchOpen
+  const toolbarDisabled = scanning || noMatchEmpty
 
   return (
     <div className="flex h-[68px] shrink-0 items-center gap-2 border-x border-[#f4f4f4] bg-white px-5 pt-5 pb-4">
@@ -1088,18 +1112,22 @@ function ResultsToolbar({
             if (!hasSelection) onTitleSearchOpenChange(open)
           }}
           lockActive={hasSelection}
-          disabled={scanning}
+          disabled={toolbarDisabled}
         />
       </StaggerEntranceItem>
 
       {hasSelection ? (
-        <StaggerEntranceItem index={1} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
+        <StaggerEntranceItem
+          index={1}
+          baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}
+          className="ml-auto"
+        >
           <ResultsSelectionActions count={selectedCount} />
         </StaggerEntranceItem>
       ) : (
         <>
           <StaggerEntranceItem index={1} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
-            <ToolbarPill className="pr-2" label="Filter" disabled={scanning}>
+            <ToolbarPill className="pr-2" label="Filter" disabled={toolbarDisabled}>
               <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFilter} />
               <span className={TOOLBAR_ACTION_LABEL_CLASS}>Filter</span>
               <span className="flex h-[18px] w-[19px] shrink-0 flex-col items-center justify-center rounded-[6px] bg-[rgba(0,144,255,0.1)] px-[6px] py-[2px] text-[13px] leading-[14px] tracking-[0.13px] text-[#0090ff]">
@@ -1112,8 +1140,8 @@ function ResultsToolbar({
             <ToolbarPill
               label="Toggle public visibility"
               aria-pressed={scanning ? true : isPublic}
-              onClick={scanning ? undefined : onTogglePublic}
-              disabled={scanning}
+              onClick={toolbarDisabled ? undefined : onTogglePublic}
+              disabled={toolbarDisabled}
             >
               <span className={TOOLBAR_ACTION_LABEL_CLASS}>Public</span>
               <PublicToggle checked={scanning ? true : isPublic} />
@@ -1122,7 +1150,7 @@ function ResultsToolbar({
 
           <div className="ml-auto flex items-center gap-2">
             <StaggerEntranceItem index={3} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
-              <ToolbarPill label="Find similars" disabled={scanning}>
+              <ToolbarPill label="Find similars" disabled={toolbarDisabled}>
                 <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFindSimilars} />
                 <span className={cn("shrink-0 whitespace-nowrap", TOOLBAR_ACTION_LABEL_CLASS)}>
                   Find similars
@@ -1130,7 +1158,7 @@ function ResultsToolbar({
               </ToolbarPill>
             </StaggerEntranceItem>
             <StaggerEntranceItem index={4} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
-              <ToolbarPill label="Review" disabled={scanning}>
+              <ToolbarPill label="Review" disabled={toolbarDisabled}>
                 <ToolbarActionIcon src={DEMO2_ASSETS.toolbarReview} />
                 <span className={TOOLBAR_ACTION_LABEL_CLASS}>Review</span>
               </ToolbarPill>
@@ -1176,6 +1204,7 @@ export function Demo2ResultsPanel({
   isSearchRunning = false,
   hasMatchingResults = true,
   onStartNewSearch,
+  onRunTemplate,
 }: {
   prompt?: string
   openFilters?: boolean
@@ -1184,6 +1213,7 @@ export function Demo2ResultsPanel({
   isSearchRunning?: boolean
   hasMatchingResults?: boolean
   onStartNewSearch?: () => void
+  onRunTemplate?: (prompt: string) => void
 } = {}) {
   const [isPublic, setIsPublic] = useState(true)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
@@ -1250,7 +1280,14 @@ export function Demo2ResultsPanel({
           (sourcePopoverOpen || scanningTabHovered) && "relative z-50",
         )}
       >
-        {showScanningShell
+        {showNoMatchEmpty ? (
+          <StaggerEntranceItem
+            index={0}
+            baseDelay={DEMO2_RESULTS_ENTRANCE.sourceTabs}
+          >
+            <NoSourceTab />
+          </StaggerEntranceItem>
+        ) : showScanningShell
           ? SCANNING_SOURCE_TABS.map((tab, index) => (
               <StaggerEntranceItem
                 key={tab.id}
@@ -1291,6 +1328,7 @@ export function Demo2ResultsPanel({
       <div className="demo2-results-surface relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-2xl border-t border-[#f4f4f4] bg-white">
         <ResultsToolbar
           scanning={showScanningShell}
+          noMatchEmpty={showNoMatchEmpty}
           isPublic={isPublic}
           onTogglePublic={() => setIsPublic((value) => !value)}
           titleSearchOpen={titleSearchOpen}
@@ -1318,8 +1356,8 @@ export function Demo2ResultsPanel({
                 </div>
               </div>
 
-              <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden px-6 pb-[210px] pt-2">
+              <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-visible">
+                <div className="flex min-h-0 flex-1 items-center justify-center overflow-visible px-6 pb-[210px] pt-2">
                   <ResultsNoMatchEmpty onStartNewSearch={onStartNewSearch ?? (() => {})} />
                 </div>
               </div>
@@ -1392,7 +1430,7 @@ export function Demo2ResultsPanel({
         {showNoMatchEmpty ? (
           <div className="pointer-events-none absolute bottom-5 left-5 right-0 z-20 min-w-0">
             <div className="pointer-events-auto">
-              <ResultsNoMatchTemplates />
+              <ResultsNoMatchTemplates onRunTemplate={onRunTemplate ?? (() => {})} />
             </div>
           </div>
         ) : null}

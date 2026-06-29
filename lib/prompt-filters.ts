@@ -15,7 +15,7 @@ import {
   type FilterNode,
   type FilterQuery,
 } from "@/lib/filter-query"
-import { parsePromptTokens } from "@/lib/prompt-tokens"
+import { normalizeFundingStage, parsePromptTokens } from "@/lib/prompt-tokens"
 
 const EUROPE_HQ = [
   "London, UK",
@@ -171,12 +171,11 @@ export function inferFiltersFromPrompt(text: string): FilterQuery {
     }
 
     if (token.type === "numeric") {
-      const series = token.value.match(/series\s+([a-e])/i)
-      if (series) {
-        const round = `Series ${series[1]!.toUpperCase()}`
+      const stage = normalizeFundingStage(token.value)
+      if (stage) {
         const rounds = getFilterAttributeOptions().fundingRounds
-        if (rounds.includes(round)) {
-          push(makeCondition("funding_round", "$eq", round), "funding_round")
+        if (rounds.includes(stage)) {
+          push(makeCondition("funding_round", "$eq", stage), "funding_round")
         }
         continue
       }

@@ -5,7 +5,11 @@ import { DEMO2_NO_MATCH_TEMPLATES } from "./demo-2-results-data"
 import { DEMO2_SHELL_EASE } from "./demo-2-motion"
 
 /** Figma 114:37425 — bottom-left template row when no results match. */
-export function ResultsNoMatchTemplates() {
+export function ResultsNoMatchTemplates({
+  onRunTemplate,
+}: {
+  onRunTemplate: (prompt: string) => void
+}) {
   const reduceMotion = useReducedMotion()
 
   return (
@@ -31,6 +35,7 @@ export function ResultsNoMatchTemplates() {
           <button
             key={template.id}
             type="button"
+            onClick={() => onRunTemplate(template.prompt)}
             className="flex h-auto w-[194px] shrink-0 cursor-pointer flex-col items-start rounded-[12px] border border-solid border-[#f4f4f4] bg-white p-4 text-left transition-colors duration-150 ease-out hover:border-[#ececec] hover:bg-[#fafafa]"
           >
             <span className="flex w-full flex-col gap-3">

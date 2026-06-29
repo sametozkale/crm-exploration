@@ -84,6 +84,31 @@ const ROLE_DICTIONARY = [
   "advisor",
 ]
 
+/** Funding rounds shown in smart-chip dropdowns (Figma 79:952). */
+export const FUNDING_STAGE_OPTIONS = [
+  "Angel",
+  "Pre-seed",
+  "Seed",
+  "Series A",
+  "Series B",
+  "Series C",
+  "Series D",
+  "Series E",
+] as const
+
+const FUNDING_STAGE_RE =
+  /\b(?:Angel|Pre-seed|Pre-Seed|Seed|Series\s+[A-F])\b/gi
+
+export function normalizeFundingStage(value: string): string | null {
+  const norm = value.trim().toLowerCase()
+  const match = FUNDING_STAGE_OPTIONS.find((o) => o.toLowerCase() === norm)
+  return match ?? null
+}
+
+export function isFundingStage(value: string): boolean {
+  return normalizeFundingStage(value) !== null
+}
+
 const INDUSTRY_DICTIONARY = [
   "AI lab",
   "AI labs",
@@ -214,7 +239,7 @@ export function parsePromptTokens(text: string): PromptToken[] {
       "numeric",
       3,
     ),
-    ...collectRegex(text, /\bSeries\s+[A-E]\b/gi, "numeric", 4),
+    ...collectRegex(text, FUNDING_STAGE_RE, "numeric", 5),
   )
 
   // Dictionary-driven types.
@@ -226,7 +251,7 @@ export function parsePromptTokens(text: string): PromptToken[] {
   // Drop degenerate numeric matches (e.g. a lone year already covered by time).
   const filtered = candidates.filter((c) => {
     if (c.type === "numeric") {
-      return /\d/.test(c.value) || /^series\s+[a-e]$/i.test(c.value.trim())
+      return /\d/.test(c.value) || isFundingStage(c.value)
     }
     return c.value.trim().length > 0
   })
@@ -282,16 +307,8 @@ export function getTokenDropdownOptions(value: string, type: TokenType): string[
 
   switch (type) {
     case "numeric": {
-      if (/series/i.test(current)) {
-        return [
-          "Angel",
-          "Pre-seed",
-          "Seed",
-          "Series A",
-          "Series B",
-          "Series C",
-          "Series D",
-        ]
+      if (isFundingStage(current)) {
+        return [...FUNDING_STAGE_OPTIONS]
       }
       return withCurrent(["50+", "100+", "200+", "500+", "1000+", "5000+"])
     }
@@ -360,8 +377,8 @@ export function getTokenDropdownOptions(value: string, type: TokenType): string[
 export function getTokenSuggestions(value: string, type: TokenType): string[] {
   switch (type) {
     case "numeric": {
-      if (/series/i.test(value)) {
-        return ["Series A", "Series B", "Series C", "Series D"].filter(
+      if (isFundingStage(value)) {
+        return FUNDING_STAGE_OPTIONS.filter(
           (v) => v.toLowerCase() !== value.toLowerCase(),
         )
       }
@@ -424,7 +441,7 @@ function buildTokenRichEnrichment(raw: string, tokens: PromptToken[]): string[] 
   const hasFounder = /\bfounders?\b/i.test(raw)
   const hasGeo = tokens.some((t) => t.type === "geo")
   const hasFundingStage = tokens.some(
-    (t) => t.type === "numeric" && /series\s+[a-e]/i.test(t.value),
+    (t) => t.type === "numeric" && isFundingStage(t.value),
   )
   const hasTime = tokens.some((t) => t.type === "time")
   const hasHeadcount =

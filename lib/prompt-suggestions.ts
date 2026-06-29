@@ -1,4 +1,4 @@
-import { parsePromptTokens } from "@/lib/prompt-tokens"
+import { isFundingStage, parsePromptTokens } from "@/lib/prompt-tokens"
 
 export type PromptSuggestion = {
   id: string
@@ -67,8 +67,8 @@ function analyzePromptGaps(text: string): PromptGaps {
       ))
 
   const hasFunding =
-    tokens.some((t) => t.type === "numeric" && /series\s+[a-e]/i.test(t.value)) ||
-    /\b(?:seed|pre-seed|angel|series\s+[a-f]|bootstrapped|unicorn|ipo)\b/i.test(trimmed)
+    tokens.some((t) => t.type === "numeric" && isFundingStage(t.value)) ||
+    /\b(?:bootstrapped|unicorn|ipo)\b/i.test(trimmed)
 
   const hasFounded =
     tokens.some((t) => t.type === "time") ||

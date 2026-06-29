@@ -22,7 +22,7 @@ import {
   getPromptSuggestions,
   type PromptSuggestion,
 } from "@/lib/prompt-suggestions"
-import { DEMO2_HOME_SHELL_FADE, DEMO2_PROMPT_SHELL_EXIT } from "./demo-2-motion"
+import { DEMO2_HOME_SHELL_FADE, DEMO2_PROMPT_SHELL_COLLAPSE } from "./demo-2-motion"
 import { HomeFundingFilterPanel } from "./home-funding-filter-panel"
 import { PromptRunShimmer } from "./prompt-run-shimmer"
 import {
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/context-menu"
 import { cn } from "@/lib/utils"
 
-const PROMPT_LINE_HEIGHT = 20
+const PROMPT_LINE_HEIGHT = 18
 const PROMPT_MAX_LINES = 6
 
 function syncPromptEditorHeight(editor: HTMLElement | null) {
@@ -687,13 +687,6 @@ export function Demo2HomePanel({
   const hasPrompt = prompt.trim().length > 0
   const showPromptActions = hasPrompt || isPromptTransitioning || isImproved
   const showTypingPlaceholder = !hasPrompt && !promptFocused && !isPromptTransitioning
-  const [grayShellMounted, setGrayShellMounted] = useState(true)
-
-  useEffect(() => {
-    if (!grayShellHiding && !homeLayoutFlying) {
-      setGrayShellMounted(true)
-    }
-  }, [grayShellHiding, homeLayoutFlying])
 
   useEffect(() => {
     if (isRunShimmer) setIsVoiceActive(false)
@@ -705,6 +698,7 @@ export function Demo2HomePanel({
   }, [isRunShimmer])
 
   const promptShimmerActive = isRunShimmer || isVoiceActive
+  const shellCollapsed = isRunShimmer || grayShellHiding || homeLayoutFlying
 
   const handleCloneSavedSearch = useCallback((id: string) => {
     setSavedSearches((prev) => {
@@ -992,32 +986,35 @@ export function Demo2HomePanel({
                 </AnimatePresence>
               </motion.div>
 
-              <div
-                className="relative flex flex-col gap-[14px] rounded-[16px] pb-[14px]"
-                style={{
-                  minHeight: DEMO2_SIZES.homePromptShellHeight,
-                  paddingBottom: 14,
+              <motion.div
+                className={cn(
+                  "relative flex flex-col gap-[14px] rounded-[16px] bg-[#fafafa]",
+                  !shellCollapsed && "pb-[10px]",
+                )}
+                animate={
+                  shellCollapsed
+                    ? { paddingBottom: 0, backgroundColor: "rgba(250,250,250,0)" }
+                    : undefined
+                }
+                transition={DEMO2_PROMPT_SHELL_COLLAPSE}
+                onAnimationComplete={() => {
+                  if (!grayShellHiding || !shellCollapsed) return
+                  onGrayShellHidden?.()
                 }}
               >
-                {grayShellMounted ? (
                 <motion.div
-                  className="pointer-events-none absolute inset-0 rounded-[16px] bg-[#fafafa]"
-                  initial={false}
-                  animate={{ opacity: grayShellHiding ? 0 : 1 }}
-                  transition={
-                    prefersReducedMotion ? { duration: 0 } : DEMO2_PROMPT_SHELL_EXIT
-                  }
-                  onAnimationComplete={() => {
-                    if (!grayShellHiding) return
-                    setGrayShellMounted(false)
-                    onGrayShellHidden?.()
+                  className="relative w-full shrink-0"
+                  animate={{
+                    minHeight: shellCollapsed
+                      ? 0
+                      : DEMO2_SIZES.homePromptShellHeight - 10,
                   }}
-                  aria-hidden={grayShellHiding}
-                />
-                ) : null}
-                <div ref={promptCardRef} className="relative">
+                  transition={DEMO2_PROMPT_SHELL_COLLAPSE}
+                >
+                <div ref={promptCardRef} className="relative w-full">
                 <PromptRunShimmer
                   active={promptShimmerActive}
+                  compact={shellCollapsed}
                   className={cn(
                     "w-full",
                     isRunShimmer && "relative z-[60]",
@@ -1025,10 +1022,7 @@ export function Demo2HomePanel({
                 >
                   <div
                     className="flex w-full shrink-0 flex-col p-[16px]"
-                    style={{
-                      gap: DEMO2_SIZES.homePromptCardGap,
-                      minHeight: DEMO2_SIZES.homePromptCardHeight,
-                    }}
+                    style={{ gap: DEMO2_SIZES.homePromptCardGap }}
                   >
                 <div className="relative min-h-0 shrink-0 overflow-hidden">
                   {showTypingPlaceholder ? <TypingPlaceholder text={typingPlaceholder} /> : null}
@@ -1063,25 +1057,44 @@ export function Demo2HomePanel({
                   </AnimatePresence>
                 </div>
 
-                {!isRunShimmer ? (
-                <PromptActionButtons
-                  hasPrompt={showPromptActions}
-                  isImproved={isImproved}
-                  isPromptTransitioning={isPromptTransitioning}
-                  isRunShimmer={isRunShimmer}
-                  isVoiceActive={isVoiceActive}
-                  onVoiceToggle={handleVoiceToggle}
-                  onImprove={handleImprove}
-                  onUndo={handleUndo}
-                  onRun={onRun}
-                />
-                ) : null}
+                <AnimatePresence initial={false}>
+                  {!isRunShimmer ? (
+                    <motion.div
+                      key="prompt-actions"
+                      initial={false}
+                      exit={{
+                        opacity: 0,
+                        height: 0,
+                        marginTop: 0,
+                        transition: {
+                          opacity: { duration: 0.2 },
+                          height: PROMPT_ACTION_EXIT,
+                          marginTop: PROMPT_ACTION_EXIT,
+                        },
+                      }}
+                      className="w-full overflow-hidden"
+                    >
+                      <PromptActionButtons
+                        hasPrompt={showPromptActions}
+                        isImproved={isImproved}
+                        isPromptTransitioning={isPromptTransitioning}
+                        isRunShimmer={isRunShimmer}
+                        isVoiceActive={isVoiceActive}
+                        onVoiceToggle={handleVoiceToggle}
+                        onImprove={handleImprove}
+                        onUndo={handleUndo}
+                        onRun={onRun}
+                      />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
                   </div>
                 </PromptRunShimmer>
                 </div>
+                </motion.div>
 
               <motion.div
-                className="group/filter relative -my-1 ml-2 w-fit"
+                className="relative pl-[10px]"
                 animate={
                   isRunShimmer
                     ? { opacity: 0, y: -4 }
@@ -1089,9 +1102,10 @@ export function Demo2HomePanel({
                 }
                 transition={HOME_SHELL_FADE}
               >
+                <div className="group/filter relative w-fit">
                 <button
                   type="button"
-                  className="flex cursor-pointer items-center gap-[6px] rounded-[8px] px-2 py-1 text-[13px] leading-4 text-[#969696] transition-colors group-hover/filter:bg-[#eeeeee] group-hover/filter:text-[#777]"
+                  className="inline-flex h-6 cursor-pointer items-center gap-[6px] rounded-[8px] px-2 text-[13px] leading-4 text-[#969696] transition-colors duration-150 ease-out hover:bg-[#eeeeee] hover:text-[#777]"
                 >
                   <svg
                     viewBox="0 0 11.5 11.5"
@@ -1109,15 +1123,16 @@ export function Demo2HomePanel({
                   Filter
                 </button>
 
-                <div className="invisible absolute left-0 top-full z-20 translate-y-1 pt-1 pr-[596px] opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/filter:visible group-hover/filter:translate-y-0 group-hover/filter:opacity-100">
+                <div className="invisible absolute left-0 top-full z-20 translate-y-1 pt-1 pr-[100px] opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/filter:visible group-hover/filter:translate-y-0 group-hover/filter:opacity-100">
                   <div className="relative w-[140px] overflow-visible rounded-[12px] border border-solid border-[#f7f7f7] bg-white p-1 drop-shadow-[0px_1px_2px_rgba(34,34,34,0.05)]">
                     {DEMO2_FILTER_OPTIONS.map((option) => (
                       <HomeFilterOptionRow key={option.label} option={option} />
                     ))}
                   </div>
                 </div>
+                </div>
               </motion.div>
-              </div>
+              </motion.div>
                 </>
               ) : null}
             </div>

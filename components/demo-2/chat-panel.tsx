@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, useReducedMotion } from "framer-motion"
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { useCallback, useLayoutEffect, useRef, useState } from "react"
 import { DEMO2_ASSETS } from "./demo-2-assets"
 import { DEMO2_SAVED_SEARCH_CONTEXT_ACTIONS } from "./demo-2-home-data"
@@ -9,6 +9,7 @@ import { ChainOfThought } from "./chain-of-thought"
 import {
   DEMO2_CHAT_CONTENT_ENTRANCE,
   DEMO2_CHAT_HEADER_ENTRANCE,
+  DEMO2_CHAT_INPUT_ACTIONS_ENTRANCE,
   DEMO2_SHELL_EASE,
 } from "./demo-2-motion"
 import { PostSearchFollowUp } from "./post-search-follow-up"
@@ -96,13 +97,33 @@ function ChatResponseInputActions({
   onSubmit,
   canSubmit = false,
   disabled = false,
+  visible = true,
 }: {
   onSubmit?: () => void
   canSubmit?: boolean
   disabled?: boolean
+  visible?: boolean
 }) {
+  const reduceMotion = useReducedMotion()
+  const entrance = reduceMotion
+    ? { duration: 0 }
+    : {
+        delay: DEMO2_CHAT_INPUT_ACTIONS_ENTRANCE.delay,
+        duration: DEMO2_CHAT_INPUT_ACTIONS_ENTRANCE.duration,
+        ease: DEMO2_CHAT_INPUT_ACTIONS_ENTRANCE.ease,
+      }
+
   return (
-    <div className="flex w-full shrink-0 items-center justify-between">
+    <AnimatePresence initial={false}>
+      {visible ? (
+        <motion.div
+          key="chat-input-actions"
+          className="flex w-full shrink-0 items-center justify-between"
+          initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 4, transition: { duration: 0.16 } }}
+          transition={entrance}
+        >
       <button
         type="button"
         aria-label="Add attachment"
@@ -148,7 +169,9 @@ function ChatResponseInputActions({
           />
         </button>
       </div>
-    </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   )
 }
 
@@ -158,6 +181,7 @@ function ChatResponseInput({
   onSubmit,
   readOnly = false,
   fillParent = false,
+  showActions = true,
   placeholder = "Enter response",
 }: {
   value?: string
@@ -165,6 +189,7 @@ function ChatResponseInput({
   onSubmit?: () => void
   readOnly?: boolean
   fillParent?: boolean
+  showActions?: boolean
   placeholder?: string
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -209,6 +234,7 @@ function ChatResponseInput({
         onSubmit={onSubmit}
         canSubmit={canSubmit}
         disabled={readOnly}
+        visible={showActions}
       />
     </ChatResponseInputShell>
   )
@@ -219,6 +245,7 @@ export function Demo2ChatPanel({
   flyPrompt,
   promptShimmerActive,
   hidePromptDuringFlight = false,
+  showInputActions = true,
   chatPromptSlotRef,
   runPhase = "complete",
   cotStepStatuses = [],
@@ -230,12 +257,14 @@ export function Demo2ChatPanel({
   onFollowUpSubmit,
   onCloneSearch,
   onRemoveSearch,
+  hasMatchingResults = true,
 }: {
   title?: string
   /** Shared layout target while prompt morphs home → chat. */
   flyPrompt?: string
   promptShimmerActive?: boolean
   hidePromptDuringFlight?: boolean
+  showInputActions?: boolean
   chatPromptSlotRef?: React.RefObject<HTMLDivElement | null>
   runPhase?: Demo2SearchRunPhase
   cotStepStatuses?: SearchRunStepStatus[]
@@ -247,6 +276,7 @@ export function Demo2ChatPanel({
   onFollowUpSubmit?: (prompt: string) => void
   onCloneSearch?: () => void
   onRemoveSearch?: () => void
+  hasMatchingResults?: boolean
 } = {}) {
   const reduceMotion = useReducedMotion()
   const isRunning = runPhase === "running"
@@ -285,7 +315,7 @@ export function Demo2ChatPanel({
         height: DEMO2_SIZES.chatInputHeight,
       }}
     >
-      <ChatResponseInput value={flyPrompt} readOnly fillParent />
+      <ChatResponseInput value={flyPrompt} readOnly fillParent showActions={showInputActions} />
     </PromptRunShimmer>
   ) : (
     <motion.div
@@ -307,6 +337,7 @@ export function Demo2ChatPanel({
           value={followUp}
           onChange={setFollowUp}
           onSubmit={handleFollowUpSubmit}
+          showActions={showInputActions}
         />
       </PromptRunShimmer>
     </motion.div>
@@ -408,7 +439,7 @@ export function Demo2ChatPanel({
             expanded={cotExpanded}
             onExpandedChange={onCotExpandedChange ?? (() => {})}
           >
-            <PostSearchFollowUp active={!isRunning} />
+            <PostSearchFollowUp active={!isRunning} hasMatchingResults={hasMatchingResults} />
           </ChainOfThought>
         </div>
       </motion.div>

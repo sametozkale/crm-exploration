@@ -3,7 +3,7 @@ import type {
   ClarificationCaseId,
   ClarificationScenario,
 } from "@/components/demo-2/clarification/clarification-types"
-import { parsePromptTokens } from "@/lib/prompt-tokens"
+import { parsePromptTokens, isFundingStage, normalizeFundingStage } from "@/lib/prompt-tokens"
 
 export type { ClarificationCaseId, ClarificationResolution, ClarificationScenario } from "@/components/demo-2/clarification/clarification-types"
 
@@ -40,7 +40,7 @@ function isFullySpecifiedPrompt(text: string): boolean {
   const tokens = parsePromptTokens(text)
   const hasGeo = tokens.some((t) => t.type === "geo")
   const hasFunding = tokens.some(
-    (t) => t.type === "numeric" && /series\s+[a-e]/i.test(t.value),
+    (t) => t.type === "numeric" && isFundingStage(t.value),
   )
   const hasHeadcount =
     /\bemployees\b/i.test(text) &&

@@ -113,12 +113,9 @@ export function ProgressiveSearch() {
       setHasMatchingResults(isDemo2PromptRelevant(trimmed))
       setOpenFiltersOnResults(openFilters)
       setIsGrayShellHiding(true)
-
-      if (reduceMotion) {
-        startPromptFlight()
-      }
+      startPromptFlight()
     },
-    [reduceMotion, startPromptFlight],
+    [startPromptFlight],
   )
 
   const finishRun = useCallback(
@@ -173,6 +170,7 @@ export function ProgressiveSearch() {
   const handleFollowUpSubmit = useCallback((text: string) => {
     const trimmed = text.trim()
     if (!trimmed) return
+    setPrompt(trimmed)
     setResolvedPrompt(trimmed)
     setHasMatchingResults(isDemo2PromptRelevant(trimmed))
     setOpenFiltersOnResults(false)
@@ -271,6 +269,7 @@ export function ProgressiveSearch() {
               flyPrompt={showFlyPrompt ? resolvedPrompt : undefined}
               promptShimmerActive={promptShimmerActive}
               hidePromptDuringFlight={isPromptLayoutFlying}
+              showInputActions={!isPromptLayoutFlying}
               chatPromptSlotRef={chatPromptSlotRef}
               runPhase={searchRun.phase}
               cotStepStatuses={searchRun.stepStatuses}
@@ -280,6 +279,7 @@ export function ProgressiveSearch() {
               cotExpanded={searchRun.cotExpanded}
               onCotExpandedChange={searchRun.setCotExpanded}
               onFollowUpSubmit={handleFollowUpSubmit}
+              hasMatchingResults={hasMatchingResults}
             />
 
             <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#fafafa] pt-2.5">
@@ -291,6 +291,7 @@ export function ProgressiveSearch() {
                 isSearchRunning={searchRun.phase === "running"}
                 hasMatchingResults={hasMatchingResults}
                 onStartNewSearch={handleStartNewSearch}
+                onRunTemplate={handleFollowUpSubmit}
               />
             </div>
           </motion.div>

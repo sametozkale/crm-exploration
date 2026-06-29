@@ -4,7 +4,9 @@ export const DEMO2_SIZES = {
   iconRailWidth: 48,
   homeSidebarWidth: 200,
   homeContentWidth: 600,
+  /** Figma 77:12951 — gray shell (card + filter + bottom padding). */
   homePromptShellHeight: 142,
+  /** Figma 72:753 — white prompt card content height. */
   homePromptCardHeight: 98,
   /** Figma 78:14933 — prompt block ↔ action row */
   homePromptCardGap: 16,

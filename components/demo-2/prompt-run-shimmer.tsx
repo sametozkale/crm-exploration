@@ -3,6 +3,7 @@
 import { motion, type HTMLMotionProps } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { DEMO2_HOME_PROMPT_CARD_IDLE } from "./demo-2-tokens"
+import { DEMO2_PROMPT_SHELL_COLLAPSE } from "./demo-2-motion"
 
 const SHIMMER_SIZE = {
   home: {
@@ -17,6 +18,8 @@ const SHIMMER_SIZE = {
 
 interface PromptRunShimmerProps extends HTMLMotionProps<"div"> {
   active?: boolean
+  /** Hides the idle gray ring — white card only (run → flight). */
+  compact?: boolean
   size?: keyof typeof SHIMMER_SIZE
   children: React.ReactNode
 }
@@ -24,24 +27,35 @@ interface PromptRunShimmerProps extends HTMLMotionProps<"div"> {
 /** Spectrum border shimmer shell. */
 export function PromptRunShimmer({
   active,
+  compact = false,
   size = "home",
   children,
   className,
   ...props
 }: PromptRunShimmerProps) {
   const shimmer = SHIMMER_SIZE[size]
+  const showIdleRing = !compact && !active && size === "home"
 
   return (
     <motion.div
       className={cn(
         "relative isolate box-border",
         shimmer.outer,
-        active && "p-px",
-        !active && size === "home" && "p-px",
-        !active && size === "home" && DEMO2_HOME_PROMPT_CARD_IDLE,
+        (active || showIdleRing) && "p-px",
+        showIdleRing && DEMO2_HOME_PROMPT_CARD_IDLE,
         active && "demo2-prompt-shimmer--active z-50",
         className,
       )}
+      animate={
+        compact && !active
+          ? {
+              padding: 0,
+              backgroundColor: "rgba(255,255,255,0)",
+              boxShadow: "0 0 0 rgba(119,119,119,0)",
+            }
+          : undefined
+      }
+      transition={DEMO2_PROMPT_SHELL_COLLAPSE}
       {...props}
     >
       {active ? (

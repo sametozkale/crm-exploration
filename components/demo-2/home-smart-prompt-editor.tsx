@@ -23,7 +23,7 @@ const CHIP_CLASS =
 
 /** Shared prompt line metrics — keep placeholder and editor in sync. */
 export const HOME_PROMPT_EDITOR_TEXT_CLASS =
-  "m-0 block min-h-[20px] w-full px-0 pt-0 pb-px text-[13px] leading-[20px] tracking-[-0.13px] whitespace-pre-wrap break-words"
+  "m-0 block min-h-[18px] w-full px-0 pt-0 pb-px text-[13px] leading-[18px] tracking-[-0.13px] whitespace-pre-wrap break-words"
 
 export interface HomeSmartPromptHandle {
   focus: () => void
@@ -289,7 +289,12 @@ export const HomeSmartPromptEditor = forwardRef<
     if (!current) return
     const next = value.slice(0, current.start) + choice + value.slice(current.end)
     onChange(next)
-    requestAnimationFrame(() => editorRef.current?.focus())
+    requestAnimationFrame(() => {
+      const editor = editorRef.current
+      if (!editor) return
+      paint(next, { restoreCaret: true })
+      editor.focus()
+    })
   }
 
   return (

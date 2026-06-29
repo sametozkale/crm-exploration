@@ -1,8 +1,9 @@
 "use client"
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { DEMO2_ASSETS } from "./demo-2-assets"
+import { DEMO2_NO_MATCH_POST_SEARCH_PARAGRAPHS } from "./demo-2-results-data"
 import { DEMO2_SHELL_EASE } from "./demo-2-motion"
 import { DEMO2_SIZES } from "./demo-2-tokens"
 import { cn } from "@/lib/utils"
@@ -89,8 +90,23 @@ function TypingCursor() {
   )
 }
 
-export function PostSearchFollowUp({ active }: { active: boolean }) {
+export function PostSearchFollowUp({
+  active,
+  hasMatchingResults = true,
+}: {
+  active: boolean
+  hasMatchingResults?: boolean
+}) {
   const reduceMotion = useReducedMotion()
+  const paragraphs = useMemo(
+    () =>
+      hasMatchingResults
+        ? [...POST_SEARCH_PARAGRAPHS]
+        : [...DEMO2_NO_MATCH_POST_SEARCH_PARAGRAPHS],
+    [hasMatchingResults],
+  )
+  const showActionCard = hasMatchingResults
+
   const [paragraphIndex, setParagraphIndex] = useState(0)
   const [charIndex, setCharIndex] = useState(0)
   const [textDone, setTextDone] = useState(false)
@@ -100,33 +116,39 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
   const hasActionSelection = selectedAction !== null
 
   useEffect(() => {
-    if (!active) {
-      setParagraphIndex(0)
-      setCharIndex(0)
-      setTextDone(false)
-      setShowCard(false)
-      setShowIcons(false)
-      return
-    }
+    setParagraphIndex(0)
+    setCharIndex(0)
+    setTextDone(false)
+    setShowCard(false)
+    setShowIcons(false)
+    setSelectedAction(null)
+  }, [active, hasMatchingResults])
+
+  useEffect(() => {
+    if (!active) return
 
     if (reduceMotion) {
       setTextDone(true)
-      setShowCard(true)
-      setShowIcons(true)
+      if (showActionCard) {
+        setShowCard(true)
+        setShowIcons(true)
+      } else {
+        setShowIcons(true)
+      }
     }
-  }, [active, reduceMotion])
+  }, [active, reduceMotion, showActionCard])
 
   useEffect(() => {
     if (!active || reduceMotion || textDone) return
 
-    const current = POST_SEARCH_PARAGRAPHS[paragraphIndex]
+    const current = paragraphs[paragraphIndex]
     if (!current) {
       setTextDone(true)
       return
     }
 
     if (charIndex >= current.length) {
-      if (paragraphIndex >= POST_SEARCH_PARAGRAPHS.length - 1) {
+      if (paragraphIndex >= paragraphs.length - 1) {
         const id = window.setTimeout(() => setTextDone(true), PARAGRAPH_PAUSE_MS)
         return () => window.clearTimeout(id)
       }
@@ -143,18 +165,19 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
     }, TYPE_CHAR_MS)
 
     return () => window.clearInterval(id)
-  }, [active, reduceMotion, textDone, paragraphIndex, charIndex])
+  }, [active, reduceMotion, textDone, paragraphIndex, charIndex, paragraphs])
 
   useEffect(() => {
     if (!textDone || reduceMotion) return
-    setShowCard(true)
-  }, [textDone, reduceMotion])
+    if (showActionCard) setShowCard(true)
+    else setShowIcons(true)
+  }, [textDone, reduceMotion, showActionCard])
 
   if (!active) return null
 
   const displayedParagraphs = reduceMotion
-    ? [...POST_SEARCH_PARAGRAPHS]
-    : POST_SEARCH_PARAGRAPHS.map((paragraph, index) => {
+    ? paragraphs
+    : paragraphs.map((paragraph, index) => {
         if (index < paragraphIndex) return paragraph
         if (index === paragraphIndex) return paragraph.slice(0, charIndex)
         return ""
@@ -165,7 +188,7 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="space-y-5 text-[14px] leading-5 tracking-[-0.13px] text-[#323232]">
-        {POST_SEARCH_PARAGRAPHS.map((_, index) => {
+        {paragraphs.map((_, index) => {
           if (!reduceMotion && index > paragraphIndex) return null
 
           const text = displayedParagraphs[index] ?? ""
@@ -180,57 +203,59 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
         })}
       </div>
 
-      <AnimatePresence>
-        {showCard ? (
-          <motion.div
-            key="post-search-card"
-            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.48, ease: DEMO2_SHELL_EASE }}
-            onAnimationComplete={() => {
-              if (!reduceMotion) setShowIcons(true)
-            }}
-            className="relative rounded-[12px] border border-solid border-[#f4f4f4] bg-white"
-            style={{
-              width: DEMO2_SIZES.chatActionCard.width,
-              height: DEMO2_SIZES.chatActionCard.height,
-            }}
-          >
-            <div className="p-3">
-              <p
-                className="mb-3 text-[11px] tracking-[-0.11px] text-[#bbb]"
-                style={{ fontFeatureSettings: '"salt" 1' }}
-              >
-                Select one following
-              </p>
-              <div className="flex flex-col gap-3">
-                {ACTION_OPTIONS.map((label) => (
-                  <ActionOptionRow
-                    key={label}
-                    label={label}
-                    checked={selectedAction === label}
-                    onSelect={() =>
-                      setSelectedAction((current) => (current === label ? null : label))
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={!hasActionSelection}
-              className={cn(
-                "absolute right-3 bottom-3 rounded-[8px] px-2 py-[5px] text-[12px] leading-[14px] tracking-[-0.12px] transition-colors",
-                hasActionSelection
-                  ? "bg-[#0090ff] text-white hover:bg-[#0081e6]"
-                  : "bg-[#eee] text-[#777] opacity-25",
-              )}
+      {showActionCard ? (
+        <AnimatePresence>
+          {showCard ? (
+            <motion.div
+              key="post-search-card"
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.48, ease: DEMO2_SHELL_EASE }}
+              onAnimationComplete={() => {
+                if (!reduceMotion) setShowIcons(true)
+              }}
+              className="relative rounded-[12px] border border-solid border-[#f4f4f4] bg-white"
+              style={{
+                width: DEMO2_SIZES.chatActionCard.width,
+                height: DEMO2_SIZES.chatActionCard.height,
+              }}
             >
-              Continue
-            </button>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+              <div className="p-3">
+                <p
+                  className="mb-3 text-[11px] tracking-[-0.11px] text-[#bbb]"
+                  style={{ fontFeatureSettings: '"salt" 1' }}
+                >
+                  Select one following
+                </p>
+                <div className="flex flex-col gap-3">
+                  {ACTION_OPTIONS.map((label) => (
+                    <ActionOptionRow
+                      key={label}
+                      label={label}
+                      checked={selectedAction === label}
+                      onSelect={() =>
+                        setSelectedAction((current) => (current === label ? null : label))
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={!hasActionSelection}
+                className={cn(
+                  "absolute right-3 bottom-3 rounded-[8px] px-2 py-[5px] text-[12px] leading-[14px] tracking-[-0.12px] transition-colors",
+                  hasActionSelection
+                    ? "bg-[#0090ff] text-white hover:bg-[#0081e6]"
+                    : "bg-[#eee] text-[#777] opacity-25",
+                )}
+              >
+                Continue
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      ) : null}
 
       <AnimatePresence>
         {showIcons ? (
