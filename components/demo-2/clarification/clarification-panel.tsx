@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Demo2HomeSidebar } from "../home-sidebar"
 import { ChatAssistantBubble } from "./chat-assistant-bubble"
-import { ChatThread } from "./chat-thread"
+import { ChatThread, ChatThreadEntranceItem } from "./chat-thread"
 import { ChatUserBubble } from "./chat-user-bubble"
 import type {
   ClarificationResolution,
@@ -55,6 +55,8 @@ export function ClarificationPanel({ scenario, onResolve }: ClarificationPanelPr
 
   const assistantMessages = scenario.messages.filter((m) => m.role === "assistant")
   const userMessage = scenario.messages.find((m) => m.role === "user")
+  const assistantStartIndex = userMessage ? 1 : 0
+  const cardEntranceIndex = assistantStartIndex + assistantMessages.length
 
   return (
     <div className="flex h-dvh w-full overflow-hidden bg-white font-inter" data-demo="2">
@@ -67,41 +69,53 @@ export function ClarificationPanel({ scenario, onResolve }: ClarificationPanelPr
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8">
           <div className="flex justify-center pt-20">
             <ChatThread>
-              {userMessage ? <ChatUserBubble text={userMessage.text} /> : null}
+              {userMessage ? (
+                <ChatThreadEntranceItem index={0}>
+                  <ChatUserBubble text={userMessage.text} />
+                </ChatThreadEntranceItem>
+              ) : null}
 
               <div className="flex flex-col gap-[17px]">
                 <div className="flex flex-col gap-1">
                   {assistantMessages.map((message, index) => (
-                    <ChatAssistantBubble
+                    <ChatThreadEntranceItem
                       key={index}
-                      text={message.text}
-                      multiline={message.multiline}
-                      showLogo={index === assistantMessages.length - 1}
-                      showTail={index === assistantMessages.length - 1}
-                    />
+                      index={assistantStartIndex + index}
+                    >
+                      <ChatAssistantBubble
+                        text={message.text}
+                        multiline={message.multiline}
+                        showLogo={index === assistantMessages.length - 1}
+                        showTail={index === assistantMessages.length - 1}
+                      />
+                    </ChatThreadEntranceItem>
                   ))}
                 </div>
 
                 {scenario.card.kind === "signal_clarification" ? (
-                  <div className="pl-[37px]">
-                    <SignalClarificationCard
-                      data={scenario.card}
-                      selectedSignalIds={selectedSignalIds}
-                      onToggleSignal={toggleSignal}
-                      onUseBoth={handleUseBoth}
-                      onSetFiltersManually={handleSetFiltersManually}
-                    />
-                  </div>
+                  <ChatThreadEntranceItem index={cardEntranceIndex}>
+                    <div className="pl-[37px]">
+                      <SignalClarificationCard
+                        data={scenario.card}
+                        selectedSignalIds={selectedSignalIds}
+                        onToggleSignal={toggleSignal}
+                        onUseBoth={handleUseBoth}
+                        onSetFiltersManually={handleSetFiltersManually}
+                      />
+                    </div>
+                  </ChatThreadEntranceItem>
                 ) : null}
 
                 {scenario.card.kind === "filter_conflict" ? (
-                  <div className="pl-[37px]">
-                    <FilterConflictCard
-                      data={scenario.card}
-                      onApplySuggested={handleApplySuggested}
-                      onKeepOriginal={handleKeepOriginal}
-                    />
-                  </div>
+                  <ChatThreadEntranceItem index={cardEntranceIndex}>
+                    <div className="pl-[37px]">
+                      <FilterConflictCard
+                        data={scenario.card}
+                        onApplySuggested={handleApplySuggested}
+                        onKeepOriginal={handleKeepOriginal}
+                      />
+                    </div>
+                  </ChatThreadEntranceItem>
                 ) : null}
               </div>
             </ChatThread>

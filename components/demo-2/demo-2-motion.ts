@@ -72,6 +72,13 @@ export const DEMO2_CHAT_CONTENT_ENTRANCE = {
 
 export const DEMO2_ROW_ENTRANCE_DURATION_S = 0.42
 
+/** Clarification chat thread — user bubble, assistant replies, action card. */
+export const DEMO2_CLARIFICATION_THREAD_ENTRANCE = {
+  base: 0.12,
+  stagger: 0.22,
+  duration: 0.62,
+} as const
+
 /** Source tab hover — results table dims behind popover. */
 export const DEMO2_TABLE_DIM = {
   opacity: 0.25,
