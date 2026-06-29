@@ -394,6 +394,13 @@ html.light {
     border-bottom-width: 0;
   }
 
+  [data-demo="2"] .demo2-table-header {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background-color: #ffffff;
+  }
+
   [data-demo="2"] .demo2-table-header .demo2-grid-cell {
     background-color: #ffffff;
   }

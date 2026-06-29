@@ -450,6 +450,19 @@ function CompanyLogo({ company }: { company: Demo2Company }) {
       </span>
     )
   }
+
+  if (company.domain) {
+    return (
+      <span className="relative size-4 shrink-0 overflow-hidden rounded-[6.4px] bg-white">
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${company.domain}&sz=128`}
+          alt=""
+          className="pointer-events-none size-full max-w-none rounded-[6.4px] object-contain"
+        />
+      </span>
+    )
+  }
+
   return (
     <span
       className="size-4 shrink-0 rounded-[6.4px]"
@@ -463,11 +476,13 @@ function CompanyLogo({ company }: { company: Demo2Company }) {
 function GridCell({
   width,
   stickyLeft,
+  stickyTop = false,
   className,
   children,
 }: {
   width: number
   stickyLeft?: number
+  stickyTop?: boolean
   className?: string
   children?: React.ReactNode
 }) {
@@ -475,7 +490,9 @@ function GridCell({
     <div
       className={cn(
         "demo2-grid-cell shrink-0 border-r border-solid border-[#f4f4f4] bg-white pr-px",
-        stickyLeft !== undefined && "sticky z-[2]",
+        (stickyLeft !== undefined || stickyTop) && "sticky",
+        stickyTop && "top-0",
+        stickyLeft !== undefined && (stickyTop ? "z-[4]" : "z-[2]"),
         className,
       )}
       style={{
@@ -840,13 +857,14 @@ function TableHeader({
   return (
     <div
       className={cn(
-        "demo2-table-header flex border-t border-b border-solid border-[#f4f4f4] bg-white pt-px",
+        "demo2-table-header sticky top-0 z-[3] flex border-t border-b border-solid border-[#f4f4f4] bg-white pt-px",
       )}
     >
       {columns.map((col) => (
         <GridCell
           key={col.key}
           width={col.width}
+          stickyTop
           stickyLeft={"stickyLeft" in col ? col.stickyLeft : undefined}
           className={col.key === "stickyPad" ? "border-r-0" : undefined}
         >
@@ -1203,7 +1221,7 @@ export function Demo2ResultsPanel({
           <div
             className="demo2-results-table relative flex min-h-0 flex-1 flex-col overflow-auto border-x border-[#f4f4f4] bg-white"
           >
-            <div className="relative flex min-h-0 flex-1 flex-col bg-white px-5 pb-5">
+            <div className="relative flex min-h-0 flex-col bg-white px-5 pb-12">
               <div
                 className="demo2-results-table-body relative flex min-h-0 flex-1 flex-col bg-white"
                 style={{ minWidth: tableMinWidth }}

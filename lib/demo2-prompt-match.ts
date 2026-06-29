@@ -45,6 +45,7 @@ function buildCorpusTokens(): Set<string> {
       company.industry,
       company.location,
       company.website,
+      company.domain,
       company.description ?? "",
       company.lastFundingType ?? "",
     ].join(" ")
