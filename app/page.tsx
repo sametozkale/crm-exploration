@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button"
 
 export default function DemoSelectorPage() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-10 bg-background px-6 py-12">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <ZeroWordmark className="h-7 w-auto text-foreground" />
-        <div className="space-y-1.5">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background px-6 py-12">
+      <div className="flex flex-col items-center gap-6 text-center">
+        <ZeroWordmark className="h-6 w-auto text-foreground" />
+        <div className="space-y-2.5">
           <h1 className="font-sans text-xl font-semibold tracking-[-0.02em] text-foreground">
             Lead Search demos
           </h1>
@@ -19,14 +19,19 @@ export default function DemoSelectorPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button asChild size="lg" className="min-w-[148px] font-inter">
+        <Button
+          asChild
+          size="lg"
+          variant="outline"
+          className="border-[#f2f2f2] bg-white px-4 font-inter text-foreground hover:bg-[#fdfdfd]"
+        >
           <Link href="/demo-1">Demo 1</Link>
         </Button>
         <Button
           asChild
           size="lg"
           variant="outline"
-          className="min-w-[148px] font-inter"
+          className="border-[#f2f2f2] bg-white px-4 font-inter text-foreground hover:bg-[#fdfdfd]"
         >
           <Link href="/demo-2">Demo 2</Link>
         </Button>
