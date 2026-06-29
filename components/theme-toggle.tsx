@@ -11,7 +11,13 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-export function ThemeToggle({ className }: { className?: string }) {
+export function ThemeToggle({
+  className,
+  tooltipSide = "bottom",
+}: {
+  className?: string
+  tooltipSide?: "top" | "bottom"
+}) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -62,7 +68,7 @@ export function ThemeToggle({ className }: { className?: string }) {
           />
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="bottom">
+      <TooltipContent side={tooltipSide}>
         {isDark ? "Light mode" : "Dark mode"}
       </TooltipContent>
     </Tooltip>

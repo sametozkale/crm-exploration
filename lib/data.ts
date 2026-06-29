@@ -1,6 +1,10 @@
 export type Tier = "high" | "medium" | "low"
 
-export type Company = {
+export type IcpFit = "excellent" | "good" | "medium"
+
+// Base shape authored by hand. Extra firmographic fields needed for the
+// Zero CRM company-listing table are derived deterministically below.
+export type BaseCompany = {
   id: string
   name: string
   domain: string
@@ -17,9 +21,24 @@ export type Company = {
   signals: string[] // small chips: e.g. "ex-OpenAI founder", "Series B"
 }
 
+// Full company record as consumed by the UI — base fields plus the
+// firmographics Zero CRM surfaces when listing a company.
+export type Company = BaseCompany & {
+  industry: string // user-friendly industry label (Zero's re-categorization)
+  headcountGrowth: number // % headcount growth (12mo snapshot)
+  lastRound: string // e.g. "Series B", "Seed"
+  totalFunding: string // total raised, e.g. "$415M"
+  investors: string[] // notable backers
+  technologies: string[] // detected tech stack
+  inCrm: boolean // already in your CRM (include/exclude lists)
+  linkedinLocations: number // number of LinkedIn office locations
+  jobPostSnippets: string[] // recent job post excerpts
+  lookalikeLabel?: string // similarity explanation for lookalike search
+}
+
 // Pre-computed for the demo prompt:
 // "AI labs founded by alumni of OpenAI, Anthropic, or DeepMind"
-export const COMPANIES: Company[] = [
+const BASE_COMPANIES: BaseCompany[] = [
   {
     id: "c01",
     name: "Adept",
@@ -696,3 +715,148 @@ export const COMPANIES: Company[] = [
     signals: ["ex-Google Brain", "Generative"],
   },
 ]
+
+/* ───────── firmographic enrichment ─────────
+ * Zero CRM's company list view needs more than the base demo fields.
+ * Rather than hand-author every value, we derive the extra firmographics
+ * deterministically from each record so the dataset stays consistent and
+ * easy to maintain while covering all companies.
+ */
+
+// Friendlier industry labels (Zero re-categorizes the raw LinkedIn taxonomy).
+const INDUSTRY_LABELS: Record<string, string> = {
+  "AI Lab": "AI Research",
+  "AI Product": "AI Software",
+  "Vertical AI": "Vertical AI",
+  Hardware: "AI Hardware",
+  Robotics: "Robotics",
+  Infra: "AI Infrastructure",
+}
+
+export const INVESTOR_POOL = [
+  "Sequoia",
+  "a16z",
+  "Lightspeed",
+  "Index Ventures",
+  "Khosla Ventures",
+  "General Catalyst",
+  "Greylock",
+  "Founders Fund",
+  "Accel",
+  "NEA",
+  "Spark Capital",
+  "Thrive Capital",
+]
+
+export const TECH_POOL = [
+  "PyTorch",
+  "Kubernetes",
+  "Next.js",
+  "Snowflake",
+  "Vercel",
+  "Postgres",
+  "Ray",
+  "Hugging Face",
+  "AWS",
+  "GCP",
+  "Datadog",
+  "Segment",
+]
+
+const JOB_SNIPPET_POOL = [
+  "Hiring for Attio admin",
+  "Senior ML engineer",
+  "Head of Marketing",
+  "Platform engineer — Kubernetes",
+  "Sales ops — HubSpot",
+  "Founding designer",
+  "Research scientist — LLM",
+]
+
+const LOOKALIKE_LABELS = [
+  "Similar positioning",
+  "Same tech stack",
+  "Overlapping industry tag",
+  "Comparable GTM motion",
+]
+
+function hashString(input: string): number {
+  let hash = 0
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash)
+}
+
+// Pull a deterministic, non-repeating slice from a pool based on a seed.
+function pickFromPool(pool: string[], seed: number, count: number): string[] {
+  const out: string[] = []
+  let cursor = seed
+  const used = new Set<number>()
+  while (out.length < count && used.size < pool.length) {
+    cursor = (cursor * 1103515245 + 12345) & 0x7fffffff
+    const idx = cursor % pool.length
+    if (!used.has(idx)) {
+      used.add(idx)
+      out.push(pool[idx])
+    }
+  }
+  return out
+}
+
+// Split "$415M Series B" → { amount: "$415M", round: "Series B" }
+const ROUND_PATTERN =
+  /\b(Pre-seed|Pre-Seed|Seed|Series\s+[A-Z]|Series\s+[A-Z]\+?)\b/i
+
+function parseFunding(funding: string): { amount: string; round: string } {
+  const match = funding.match(ROUND_PATTERN)
+  if (match) {
+    const round = match[0].replace(/\s+/g, " ").trim()
+    const amount = funding.replace(ROUND_PATTERN, "").trim()
+    return { amount: amount || funding, round }
+  }
+  return { amount: funding.trim(), round: "Total raised" }
+}
+
+function enrichCompany(base: BaseCompany): Company {
+  const seed = hashString(base.id + base.name)
+  const { amount, round } = parseFunding(base.funding)
+  // 12-month headcount growth, skewed higher for younger / hotter companies.
+  const growthBase = 4 + (seed % 26) // 4..29
+  const headcountGrowth =
+    base.tier === "high" ? growthBase + 4 : growthBase
+  const investorCount = base.employees > 150 ? 3 : 2
+  return {
+    ...base,
+    industry: INDUSTRY_LABELS[base.category] ?? base.category,
+    headcountGrowth: Math.min(headcountGrowth, 42),
+    lastRound: round,
+    totalFunding: amount,
+    investors: pickFromPool(INVESTOR_POOL, seed, investorCount),
+    technologies: pickFromPool(TECH_POOL, seed >> 3, 3),
+    inCrm: seed % 10 < 3, // ~30% already in CRM
+    linkedinLocations: 1 + (seed % 8),
+    jobPostSnippets: pickFromPool(JOB_SNIPPET_POOL, seed >> 5, 1 + (seed % 2)),
+    lookalikeLabel:
+      base.score >= 70
+        ? LOOKALIKE_LABELS[seed % LOOKALIKE_LABELS.length]
+        : undefined,
+  }
+}
+
+export const COMPANIES: Company[] = BASE_COMPANIES.map(enrichCompany)
+
+// Map the 0–100 match score onto Zero's ICP Fit label set.
+export function icpFitFromScore(score: number): IcpFit {
+  if (score >= 90) return "excellent"
+  if (score >= 70) return "good"
+  return "medium"
+}
+
+export function icpFitLabel(fit: IcpFit): string {
+  return fit === "excellent"
+    ? "Excellent"
+    : fit === "good"
+      ? "Good"
+      : "Medium"
+}

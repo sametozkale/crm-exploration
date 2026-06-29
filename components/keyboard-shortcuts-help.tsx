@@ -107,7 +107,11 @@ function KeyboardShortcutsList({ compact = false }: { compact?: boolean }) {
   )
 }
 
-export function KeyboardShortcutsHelp() {
+export function KeyboardShortcutsHelp({
+  side = "bottom",
+}: {
+  side?: "top" | "bottom"
+}) {
   return (
     <HoverCard openDelay={120} closeDelay={100}>
       <HoverCardTrigger asChild>
@@ -122,8 +126,8 @@ export function KeyboardShortcutsHelp() {
         </Button>
       </HoverCardTrigger>
       <HoverCardContent
-        align="end"
-        side="bottom"
+        align="start"
+        side={side}
         sideOffset={8}
         className="w-[min(100vw-2rem,20rem)] border border-border p-0 font-inter shadow-lg"
       >

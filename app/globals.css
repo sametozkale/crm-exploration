@@ -277,6 +277,132 @@ html.light {
     border-radius: calc(var(--radius-xl) - 1px);
   }
 
+  .prompt-card-surface-top {
+    border-top-left-radius: calc(var(--radius-xl) - 1px);
+    border-top-right-radius: calc(var(--radius-xl) - 1px);
+  }
+
+  .prompt-card-input-surface {
+    border-radius: var(--radius-xl);
+    border: 1px solid #f4f4f4;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.025);
+  }
+
+  .dark .prompt-card-input-surface {
+    border-color: oklch(1 0 0 / 0.08);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  }
+
+  .prompt-card-shimmer-mask {
+    border-radius: calc(var(--radius-xl) - 1px);
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  /* Results table — row checkboxes hidden until row or header select is hovered */
+  .results-table-select .row-select-box {
+    opacity: 0;
+  }
+
+  .results-table-select .select-header-cell:hover .select-header-box {
+    border-color: #d7dce3;
+  }
+
+  .results-table-select:has(.select-header-cell:hover) .row-select-box,
+  .results-table-select .group\/row:hover .row-select-box {
+    opacity: 1;
+  }
+
+  /* Demo 2 — pointer cursor on clickable controls */
+  [data-demo="2"] button:not(:disabled),
+  [data-demo="2"] a[href],
+  [data-demo="2"] [role="button"]:not([aria-disabled="true"]),
+  [data-demo="2"] label:has(input[type="radio"]:not(:disabled)),
+  [data-demo="2"] label:has(input[type="checkbox"]:not(:disabled)) {
+    cursor: pointer;
+  }
+
+  [data-demo="2"] button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Demo 2 — unified white table surface (toolbar + list + scroll track) */
+  [data-demo="2"] .demo2-results-surface,
+  [data-demo="2"] .demo2-results-table,
+  [data-demo="2"] .demo2-table-header,
+  [data-demo="2"] .demo2-table-row {
+    background-color: #ffffff;
+  }
+
+  [data-demo="2"] .demo2-results-table {
+    scrollbar-color: #d1d5db #ffffff;
+  }
+
+  [data-demo="2"] .demo2-results-table::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  [data-demo="2"] .demo2-results-table::-webkit-scrollbar-track {
+    background: #ffffff;
+  }
+
+  [data-demo="2"] .demo2-results-table::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border: 2px solid #ffffff;
+    border-radius: 9999px;
+  }
+
+  [data-demo="2"] .demo2-results-table::-webkit-scrollbar-corner {
+    background: #ffffff;
+  }
+
+  /* Demo 2 — Figma table checkbox visibility */
+  [data-demo="2"] .demo2-row-checkbox,
+  [data-demo="2"] .demo2-header-checkbox {
+    opacity: 0;
+    transition: opacity 120ms ease, border-color 120ms ease, background-color 120ms ease;
+  }
+
+  [data-demo="2"] .demo2-row-checkbox[data-checked],
+  [data-demo="2"] .demo2-header-checkbox[data-checked],
+  [data-demo="2"] .demo2-header-checkbox[data-indeterminate] {
+    opacity: 1;
+  }
+
+  [data-demo="2"] .demo2-select-header:hover .demo2-header-checkbox {
+    opacity: 1;
+    border-color: #d7dce3;
+  }
+
+  [data-demo="2"] .demo2-results-table:has(.demo2-select-header:hover) .demo2-row-checkbox,
+  [data-demo="2"] .demo2-table-row:hover .demo2-row-checkbox {
+    opacity: 1;
+  }
+
+  [data-demo="2"] .demo2-table-row:hover {
+    background-color: #fdfdfd;
+  }
+
+  [data-demo="2"] .demo2-table-row:hover .demo2-grid-cell {
+    background-color: #fdfdfd;
+  }
+
+  /* Demo 2 — last table row closes without a bottom divider */
+  [data-demo="2"] .demo2-results-table-body > :last-child.demo2-table-row,
+  [data-demo="2"] .demo2-results-table-body > :last-child .demo2-table-row {
+    border-bottom-width: 0;
+  }
+
+  [data-demo="2"] .demo2-table-header .demo2-grid-cell {
+    background-color: #ffffff;
+  }
+
+  .prompt-card-surface-bottom {
+    border-bottom-left-radius: calc(var(--radius-xl) - 1px);
+    border-bottom-right-radius: calc(var(--radius-xl) - 1px);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .prompt-card-shimmer-glow {
       animation: none;
@@ -303,6 +429,169 @@ html.light {
     .animate-nudge-right {
       animation: none;
       opacity: 0.7;
+    }
+  }
+
+  /* Demo 2 — Improve button hover shimmer: icon → text sweep (Figma 78:13986) */
+  .group\/improve::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    width: 55%;
+    pointer-events: none;
+    opacity: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 25%,
+      rgba(255, 255, 255, 0.85) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 100%
+    );
+    mix-blend-mode: soft-light;
+    transform: translateX(-120%);
+  }
+
+  .group\/improve:hover::after {
+    opacity: 1;
+    animation: demo2-improve-sweep 1.5s ease-in-out infinite;
+  }
+
+  @keyframes demo2-improve-sweep {
+    0% {
+      transform: translateX(-120%);
+    }
+    100% {
+      transform: translateX(220%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .group\/improve:hover::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
+  [data-demo="2"] .demo2-prompt-shimmer-mask,
+  [data-demo="2"] .demo2-prompt-shimmer-mask-chat {
+    background: #ffffff;
+    box-shadow: none;
+  }
+
+  [data-demo="2"] .demo2-prompt-shimmer-mask {
+    border-radius: 15px;
+  }
+
+  [data-demo="2"] .demo2-prompt-shimmer-mask-chat {
+    border-radius: 11px;
+  }
+
+  [data-demo="2"] .demo2-prompt-shimmer-mask > *,
+  [data-demo="2"] .demo2-prompt-shimmer-mask-chat > * {
+    box-shadow: none !important;
+  }
+
+  [data-demo="2"] .demo2-skeleton-bar {
+    background: linear-gradient(
+      90deg,
+      rgba(106, 186, 255, 0.08) 0%,
+      rgba(0, 144, 255, 0.14) 50%,
+      rgba(106, 186, 255, 0.08) 100%
+    );
+    background-size: 200% 100%;
+    animation: demo2-skeleton-shimmer 1.6s ease-in-out infinite;
+  }
+
+  @keyframes demo2-skeleton-shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: -100% 0;
+    }
+  }
+
+  [data-demo="2"] .demo2-source-dot {
+    opacity: var(--dot-min, 0.35);
+    animation-name: demo2-source-dot-flicker;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  @keyframes demo2-source-dot-flicker {
+    0%,
+    100% {
+      opacity: var(--dot-min, 0.35);
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  [data-demo="2"] .demo2-cot-searching-shimmer {
+    background-image: linear-gradient(
+      270deg,
+      #777 0%,
+      #777 50%,
+      #777 65%,
+      rgba(119, 119, 119, 0.25) 80%,
+      #777 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: demo2-cot-searching-shimmer 2.4s ease-in-out infinite;
+  }
+
+  @keyframes demo2-cot-searching-shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: -100% 0;
+    }
+  }
+
+  [data-demo="2"] .demo2-voice-eq-bar {
+    transform-origin: center;
+    animation: demo2-voice-eq-pulse 0.85s ease-in-out infinite;
+  }
+
+  @keyframes demo2-voice-eq-pulse {
+    0%,
+    100% {
+      transform: scaleY(0.4);
+    }
+    50% {
+      transform: scaleY(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-demo="2"] .prompt-card-shimmer-glow {
+      animation: none;
+    }
+
+    [data-demo="2"] .demo2-skeleton-bar {
+      animation: none;
+    }
+
+    [data-demo="2"] .demo2-source-dot {
+      animation: none;
+      opacity: 0.55;
+    }
+
+    [data-demo="2"] .demo2-cot-searching-shimmer {
+      animation: none;
+      background-image: none;
+      color: #777;
+    }
+
+    [data-demo="2"] .demo2-voice-eq-bar {
+      animation: none;
     }
   }
 }

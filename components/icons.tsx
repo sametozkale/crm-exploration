@@ -6,12 +6,34 @@ import type { IconSvgElement } from "@hugeicons/react"
 import {
   AiEditingIcon,
   AiSearchIcon,
+  Analytics01Icon,
   ArrowDownWideNarrowIcon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   ArrowUpRight01Icon,
   ArrowUpWideNarrowIcon,
+  Briefcase01Icon,
+  Building06Icon,
+  Calendar03Icon,
   Cancel01Icon,
+  ChartBarLineIcon,
+  ContactBookIcon,
+  DollarCircleIcon,
+  FlowConnectionIcon,
+  InboxIcon,
+  LeftToRightListBulletIcon,
+  Location01Icon,
+  Megaphone01Icon,
+  MoneyBag02Icon,
+  PipelineIcon,
+  PlusSignIcon,
+  RecordIcon,
+  RoboticIcon,
+  Tag01Icon,
+  Target01Icon,
+  TradeUpIcon,
+  UserMultipleIcon,
+  WorkflowCircle01Icon,
   CheckIcon as CheckIconSvg,
   ChevronDownIcon as ChevronDownIconSvg,
   ChevronLeftIcon as ChevronLeftIconSvg,
@@ -31,14 +53,19 @@ import {
   PanelLeftIcon as PanelLeftIconSvg,
   Search01Icon,
   SearchRemoveIcon,
+  SentIcon,
   SparklesIcon,
   Sun01Icon,
   Undo02Icon,
   UserGroupIcon,
+  UserSearch01Icon,
 } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 
-type IconComponentProps = React.ComponentProps<typeof HugeiconsIcon> & {
+type IconComponentProps = Omit<
+  React.ComponentProps<typeof HugeiconsIcon>,
+  "icon"
+> & {
   className?: string
   size?: number | string
 }
@@ -101,13 +128,42 @@ export const Info = createIcon(InformationCircleIcon, "Info")
 export const Keyboard = createIcon(KeyboardIconSvg, "Keyboard")
 export const EditPrompt = createIcon(AiEditingIcon, "EditPrompt")
 export const ScanSearch = createIcon(AiSearchIcon, "ScanSearch")
+export const UserSearch = createIcon(UserSearch01Icon, "UserSearch")
 export const Search = createIcon(Search01Icon, "Search")
 export const SearchX = createIcon(SearchRemoveIcon, "SearchX")
 export const Sparkles = createIcon(SparklesIcon, "Sparkles")
 export const MagicWand = createIcon(MagicWand02Icon, "MagicWand")
 export const Undo2 = createIcon(Undo02Icon, "Undo2")
 export const Users = createIcon(UserGroupIcon, "Users")
+export const Building2 = createIcon(Building06Icon, "Building2")
+export const Calendar = createIcon(Calendar03Icon, "Calendar")
+export const Banknote = createIcon(MoneyBag02Icon, "Banknote")
+export const Tag = createIcon(Tag01Icon, "Tag")
+export const Sparkle = createIcon(SparklesIcon, "Sparkle")
+export const CircleDot = createIcon(RecordIcon, "CircleDot")
 export const X = createIcon(Cancel01Icon, "X")
+
+// Sidebar + CRM table
+export const Inbox = createIcon(InboxIcon, "Inbox")
+
+export const Sent = createIcon(SentIcon, "Sent")
+export const FlowConnection = createIcon(FlowConnectionIcon, "FlowConnection")
+export const Target = createIcon(Target01Icon, "Target")
+export const Megaphone = createIcon(Megaphone01Icon, "Megaphone")
+export const Robot = createIcon(RoboticIcon, "Robot")
+export const Workflow = createIcon(WorkflowCircle01Icon, "Workflow")
+export const Analytics = createIcon(Analytics01Icon, "Analytics")
+export const ChartBar = createIcon(ChartBarLineIcon, "ChartBar")
+export const Pipeline = createIcon(PipelineIcon, "Pipeline")
+export const Contacts = createIcon(ContactBookIcon, "Contacts")
+export const ListBullet = createIcon(LeftToRightListBulletIcon, "ListBullet")
+export const Circle = createIcon(CircleIconSvg, "Circle")
+export const Briefcase = createIcon(Briefcase01Icon, "Briefcase")
+export const DollarCircle = createIcon(DollarCircleIcon, "DollarCircle")
+export const Plus = createIcon(PlusSignIcon, "Plus")
+export const TrendUp = createIcon(TradeUpIcon, "TrendUp")
+export const MapPin = createIcon(Location01Icon, "MapPin")
+export const MoreHorizontal = createIcon(MoreHorizontalIconSvg, "MoreHorizontal")
 export const Moon = createIcon(Moon02Icon, "Moon")
 export const Sun = createIcon(Sun01Icon, "Sun")
 

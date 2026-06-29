@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 2">
+<circle id="Ellipse 1" opacity="0.2" cx="8" cy="8" r="7" stroke="var(--stroke-0, #838383)" stroke-width="2"/>
+<g id="Ellipse 2">
+<mask id="path-2-inside-1_0_288" fill="white">
+<path d="M16 8C16 6.94943 15.7931 5.90914 15.391 4.93853C14.989 3.96793 14.3997 3.08601 13.6569 2.34315C12.914 1.60028 12.0321 1.011 11.0615 0.608964C10.0909 0.206926 9.05057 -4.59221e-08 8 0L8 8H16Z"/>
+</mask>
+<path d="M16 8C16 6.94943 15.7931 5.90914 15.391 4.93853C14.989 3.96793 14.3997 3.08601 13.6569 2.34315C12.914 1.60028 12.0321 1.011 11.0615 0.608964C10.0909 0.206926 9.05057 -4.59221e-08 8 0L8 8H16Z" stroke="var(--stroke-0, #0090FF)" stroke-width="4" mask="url(#path-2-inside-1_0_288)"/>
+</g>
+<circle id="Ellipse 3" cx="8" cy="8" r="6" fill="var(--fill-0, white)"/>
+</g>
+</svg>
