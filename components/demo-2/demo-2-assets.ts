@@ -26,6 +26,8 @@ export const DEMO2_ASSETS = {
   railUsers: `${RAIL}/users.svg`,
   railMoney: `${RAIL}/money.svg`,
   railFolder: `${RAIL}/folder.svg`,
+  railListMail: `${RAIL}/list-mail.svg`,
+  railListSpirals: `${RAIL}/list-spirals.svg`,
   chatArrowRight: "https://www.figma.com/api/mcp/asset/5f926580-36da-45ad-b94c-d6bd6c759544",
   chatSend: "https://www.figma.com/api/mcp/asset/70d42fad-9e2b-45cb-a477-13aad8183251",
   chatImport: "https://www.figma.com/api/mcp/asset/e92b46cf-65f2-4622-ba51-8e20b3ddd101",
@@ -93,6 +95,8 @@ export const DEMO2_ASSETS = {
   homeFilterTech: `${HOME}/filter-tech.svg`,
   homeFilterJobSignal: `${HOME}/filter-jobsignal.svg`,
   homeFilterContacts: `${HOME}/filter-contacts.svg`,
+  homeFundingCalendar: `${HOME}/calendar-03.svg`,
+  homeFundingSliderGrip: `${HOME}/slider-grip.svg`,
   clarificationSearch: `${CLARIFICATION}/search.svg`,
   clarificationSearchWhite: `${CLARIFICATION}/search-white.svg`,
   clarificationFilter: `${CLARIFICATION}/filter.svg`,
@@ -103,4 +107,4 @@ export const DEMO2_ASSETS = {
 } as const
 
 export const DEMO2_TOOLBAR_PILL =
-  "inline-flex h-8 shrink-0 cursor-pointer items-center gap-[6px] rounded-[10px] border border-solid border-[#f2f2f2] border-[0.5px] bg-white pl-3 pr-3 shadow-[0px_0px_1px_rgba(119,119,119,0.12)]"
+  "group inline-flex h-8 shrink-0 cursor-pointer items-center gap-[6px] rounded-[10px] border border-solid border-[#f2f2f2] border-[0.5px] bg-white pl-3 pr-3 shadow-[0px_0px_1px_rgba(119,119,119,0.12)] transition-[background-color,border-color,box-shadow,color] duration-150 ease-out hover:border-[#ddd] hover:bg-[#fdfdfd] hover:shadow-[0px_0px_0.5px_rgba(119,119,119,0.12)] disabled:cursor-not-allowed disabled:hover:border-[#f2f2f2] disabled:hover:bg-white disabled:hover:shadow-[0px_0px_1px_rgba(119,119,119,0.12)]"

@@ -132,6 +132,161 @@ export function HomeSearchListIcon({ className }: { className?: string }) {
   )
 }
 
+/** Figma 61:49860 — sidebar search (searching), 16×16 */
+export function SidebarSearchingIcon({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn("relative inline-flex size-4 shrink-0 overflow-clip", className)}
+      aria-hidden
+    >
+      <span className="absolute inset-x-[8.33%] inset-y-[12.5%]">
+        <span className="absolute -inset-x-[3.75%] -inset-y-[4.17%]">
+          <svg
+            viewBox="0 0 14.3333 13"
+            fill="none"
+            preserveAspectRatio="xMidYMid meet"
+            className="block size-full"
+          >
+            <path
+              d="M12.8115 12.852C13.0059 13.0481 13.3225 13.0495 13.5186 12.8551C13.7148 12.6607 13.7162 12.3442 13.5218 12.148L13.1667 12.5L12.8115 12.852ZM11.0128 10.3268L10.6577 10.6788L12.8115 12.852L13.1667 12.5L13.5218 12.148L11.3679 9.97487L11.0128 10.3268ZM12.2333 7.36667H12.7333C12.7333 4.77093 10.6291 2.66667 8.03333 2.66667V3.16667V3.66667C10.0768 3.66667 11.7333 5.32321 11.7333 7.36667H12.2333ZM8.03333 3.16667V2.66667C5.4376 2.66667 3.33333 4.77093 3.33333 7.36667H3.83333H4.33333C4.33333 5.32321 5.98988 3.66667 8.03333 3.66667V3.16667ZM3.83333 7.36667H3.33333C3.33333 9.96241 5.4376 12.0667 8.03333 12.0667V11.5667V11.0667C5.98988 11.0667 4.33333 9.41012 4.33333 7.36667H3.83333ZM8.03333 11.5667V12.0667C10.6291 12.0667 12.7333 9.96241 12.7333 7.36667H12.2333H11.7333C11.7333 9.41012 10.0768 11.0667 8.03333 11.0667V11.5667Z"
+              fill="#9C9C9C"
+            />
+            <path
+              d="M1.83333 5.16667C1.50717 5.14192 1.2795 5.08621 1.09257 4.96078C0.946987 4.86309 0.821986 4.73756 0.724708 4.59136C0.500001 4.25363 0.500001 3.7835 0.500001 2.84322C0.500001 1.90294 0.500001 1.43281 0.724708 1.09508C0.821986 0.948881 0.946987 0.82335 1.09257 0.72566C1.42887 0.500001 1.89703 0.500001 2.83333 0.500001H11.5C12.4363 0.500001 12.9045 0.500001 13.2408 0.72566C13.3863 0.82335 13.5113 0.948881 13.6086 1.09508C13.8333 1.43281 13.8333 1.90294 13.8333 2.84322C13.8333 3.70171 13.8333 4.16829 13.6623 4.5"
+              stroke="#9C9C9C"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/** Figma folder icon — closed (default) / open (100:33957), 16×16 */
+export function SidebarFolderIcon({
+  open = false,
+  className,
+}: {
+  open?: boolean
+  className?: string
+}) {
+  return (
+    <span
+      className={cn("relative inline-flex size-4 shrink-0 overflow-clip", className)}
+      aria-hidden
+    >
+      <span className="absolute inset-x-[7.81%] inset-y-[21.88%]">
+        <span className="absolute -inset-x-[4.35%] -inset-y-[6.52%]">
+          {open ? (
+            <svg
+              viewBox="0 0 14.5592 10.1739"
+              fill="none"
+              preserveAspectRatio="xMidYMid meet"
+              className="block size-full"
+            >
+              <path
+                d="M0.598896 1.50366L1.89191 8.93841C1.9571 9.31328 2.28245 9.58696 2.66294 9.58696H11.2996C11.9616 9.58696 12.3246 8.81624 11.903 8.3059L5.76119 0.871137C5.61251 0.691161 5.39126 0.586957 5.15783 0.586957H1.36993C0.884094 0.586957 0.51565 1.02501 0.598896 1.50366Z"
+                fill="#0090FF"
+                stroke="#0090FF"
+                strokeWidth="1.17391"
+              />
+              <path
+                d="M2.99013 3.32599L2.02417 8.80425C1.94795 9.23648 2.23656 9.58686 2.66878 9.58686H12.0601C12.4923 9.58686 12.9045 9.23648 12.9807 8.80425L13.9467 3.32599C14.0229 2.89377 13.7343 2.54338 13.302 2.54338H3.91074C3.47852 2.54338 3.06635 2.89377 2.99013 3.32599Z"
+                fill="#6ABAFF"
+                stroke="#6ABAFF"
+                strokeWidth="1.18293"
+              />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 14.0909 11.8182"
+              fill="none"
+              preserveAspectRatio="xMidYMid meet"
+              className="block size-full"
+            >
+              <path
+                d="M0.681818 1.59091V10.2273C0.681818 10.7294 1.08884 11.1364 1.59091 11.1364H11.7309C12.4528 11.1364 12.8867 10.3354 12.4924 9.73064L6.85992 1.0943C6.6921 0.836982 6.40567 0.681818 6.09845 0.681818H1.59091C1.08884 0.681818 0.681818 1.08884 0.681818 1.59091Z"
+                fill="#0090FF"
+                stroke="#0090FF"
+                strokeWidth="1.36364"
+              />
+              <path
+                d="M0.681818 3.86368V10.2273C0.681818 10.7294 1.08884 11.1364 1.59091 11.1364H12.5C13.0021 11.1364 13.4091 10.7294 13.4091 10.2273V3.86368C13.4091 3.3616 13.0021 2.95458 12.5 2.95458H1.59091C1.08884 2.95458 0.681818 3.3616 0.681818 3.86368Z"
+                fill="#6ABAFF"
+                stroke="#6ABAFF"
+                strokeWidth="1.36364"
+              />
+            </svg>
+          )}
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/** Figma 100:33931 — flash sidebar icon, 16×16 */
+export function SidebarFlashIcon({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn("relative inline-flex size-4 shrink-0 overflow-clip", className)}
+      aria-hidden
+    >
+      <span className="absolute inset-x-[20.83%] inset-y-[8.33%]">
+        <span className="absolute -inset-x-[5.36%] -inset-y-[3.75%]">
+          <svg
+            viewBox="0 0 10.333 14.3331"
+            fill="none"
+            preserveAspectRatio="xMidYMid meet"
+            className="block size-full"
+          >
+            <path
+              d="M0.650348 6.7195L5.31585 0.730879C5.68073 0.262519 6.36464 0.554031 6.36464 1.17792V5.81317C6.36464 6.18689 6.63285 6.48985 6.96371 6.48985H9.23294C9.74843 6.48985 10.0232 7.17645 9.68267 7.61358L5.01717 13.6022C4.65229 14.0706 3.96837 13.779 3.96837 13.1552V8.51991C3.96837 8.14619 3.70016 7.84323 3.3693 7.84323H1.10008C0.584582 7.84323 0.309799 7.15663 0.650348 6.7195Z"
+              stroke="#838383"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </span>
+    </span>
+  )
+}
+
+/** Figma 100:33964 — mail-01 list child icon, 16×16 */
+export function SidebarListMailIcon({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn("relative inline-flex size-4 shrink-0 overflow-clip", className)}
+      aria-hidden
+    >
+      <span className="absolute inset-x-[8.33%] inset-y-[14.58%]">
+        <span className="absolute -inset-x-[5.63%] -inset-y-[6.62%]">
+          <svg
+            viewBox="0 0 14.8333 12.8333"
+            fill="none"
+            preserveAspectRatio="xMidYMid meet"
+            className="block size-full"
+          >
+            <path
+              d="M0.750002 2.41668L5.35868 5.02799C7.05773 5.99068 7.7756 5.99068 9.47465 5.02799L14.0833 2.41668"
+              stroke="#00CD71"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M0.760511 7.40041C0.804094 9.4441 0.825886 10.4659 1.57997 11.2229C2.33406 11.9799 3.38356 12.0062 5.48255 12.059C6.77621 12.0915 8.05713 12.0915 9.35079 12.059C11.4498 12.0062 12.4993 11.9799 13.2534 11.2229C14.0075 10.4659 14.0292 9.4441 14.0728 7.40041C14.0868 6.74329 14.0868 6.09005 14.0728 5.43293C14.0292 3.38924 14.0075 2.3674 13.2534 1.61044C12.4993 0.853487 11.4498 0.827118 9.35079 0.774379C8.05713 0.741875 6.77621 0.741874 5.48255 0.774375C3.38355 0.827109 2.33406 0.853476 1.57997 1.61043C0.825882 2.36739 0.804091 3.38923 0.76051 5.43292C0.746496 6.09004 0.746497 6.74329 0.760511 7.40041Z"
+              stroke="#00CD71"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </span>
+    </span>
+  )
+}
+
 /** Figma arrow-down-01-round — clean centered chevron */
 export function HomeChevronDownIcon({
   className,

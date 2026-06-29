@@ -41,18 +41,19 @@ function ActionOptionRow({
   onSelect: () => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2">
+    <label className="group flex cursor-pointer items-center gap-2">
       <input
-        type="radio"
-        name="post-search-action"
+        type="checkbox"
         className="sr-only"
         checked={checked}
         onChange={onSelect}
       />
       <span
         className={cn(
-          "flex size-4 shrink-0 items-center justify-center rounded-[6px] border border-solid transition-colors",
-          checked ? "border-[#0090ff] bg-[#0090ff]" : "border-[#f2f2f2] bg-white",
+          "flex size-4 shrink-0 items-center justify-center rounded-[6px] border border-solid transition-colors duration-150 ease-out",
+          checked
+            ? "border-[#0090ff] bg-[#0090ff]"
+            : "border-[#f2f2f2] bg-white group-hover:border-[#e0e0e0]",
         )}
         aria-hidden
       >
@@ -185,7 +186,7 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
             key="post-search-card"
             initial={reduceMotion ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.36, ease: DEMO2_SHELL_EASE }}
+            transition={{ duration: 0.48, ease: DEMO2_SHELL_EASE }}
             onAnimationComplete={() => {
               if (!reduceMotion) setShowIcons(true)
             }}
@@ -208,7 +209,9 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
                     key={label}
                     label={label}
                     checked={selectedAction === label}
-                    onSelect={() => setSelectedAction(label)}
+                    onSelect={() =>
+                      setSelectedAction((current) => (current === label ? null : label))
+                    }
                   />
                 ))}
               </div>
@@ -235,7 +238,7 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
             key="post-search-icons"
             initial={reduceMotion ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: DEMO2_SHELL_EASE }}
+            transition={{ duration: 0.4, ease: DEMO2_SHELL_EASE }}
             className="flex gap-2"
           >
             {CHAT_ACTIONS.map((action, index) => (
@@ -246,8 +249,8 @@ export function PostSearchFollowUp({ active }: { active: boolean }) {
                 initial={reduceMotion ? false : { opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
-                  duration: 0.24,
-                  delay: reduceMotion ? 0 : index * 0.06,
+                  duration: 0.32,
+                  delay: reduceMotion ? 0 : index * 0.08,
                   ease: DEMO2_SHELL_EASE,
                 }}
                 className="flex cursor-pointer items-center justify-center rounded-[8px] p-1 transition-colors duration-150 ease-out hover:bg-[#f4f4f4]"

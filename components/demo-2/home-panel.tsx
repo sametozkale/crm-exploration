@@ -5,21 +5,25 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { DEMO2_ASSETS } from "./demo-2-assets"
 import {
   DEMO2_FILTER_OPTIONS,
+  DEMO2_MORE_SUGGESTIONS,
   DEMO2_NEW_COUNT_ACTIONS,
   DEMO2_PROMPT_PLACEHOLDERS,
   DEMO2_SAVED_SEARCHES,
   DEMO2_SAVED_SEARCH_CONTEXT_ACTIONS,
+  DEMO2_SUGGESTION_CHIPS,
   type Demo2SavedSearch,
 } from "./demo-2-home-data"
 import { DEMO2_SIZES } from "./demo-2-tokens"
 import { HomeChevronDownIcon, HomeEqualizerIcon, HomeImproveIcon, HomeSearchListIcon } from "./home-icons"
-import { HomeSmartPromptEditor, type HomeSmartPromptHandle } from "./home-smart-prompt-editor"
+import { HomeSmartPromptEditor, HOME_PROMPT_EDITOR_TEXT_CLASS, type HomeSmartPromptHandle } from "./home-smart-prompt-editor"
 import { improvePrompt } from "@/lib/prompt-tokens"
 import {
   applyPromptSuggestion,
   getPromptSuggestions,
   type PromptSuggestion,
 } from "@/lib/prompt-suggestions"
+import { DEMO2_HOME_SHELL_FADE, DEMO2_PROMPT_SHELL_EXIT } from "./demo-2-motion"
+import { HomeFundingFilterPanel } from "./home-funding-filter-panel"
 import { PromptRunShimmer } from "./prompt-run-shimmer"
 import {
   ContextMenu,
@@ -61,10 +65,7 @@ const PROMPT_TEXT_INITIAL = { opacity: 0, y: 5, filter: "blur(2px)" }
 const PROMPT_TEXT_SHOW = { opacity: 1, y: 0, filter: "blur(0px)" }
 const PROMPT_TEXT_HIDE = { opacity: 0, y: -4, filter: "blur(2px)" }
 
-const HOME_SHELL_FADE = {
-  duration: 0.28,
-  ease: PROMPT_ACTION_EASE,
-} as const
+const HOME_SHELL_FADE = DEMO2_HOME_SHELL_FADE
 
 function useTypingPlaceholder(placeholders: readonly string[], enabled: boolean) {
   const [phraseIndex, setPhraseIndex] = useState(0)
@@ -151,11 +152,14 @@ function useImproveTypewriter(
 function TypingPlaceholder({ text }: { text: string }) {
   return (
     <span
-      className="pointer-events-none absolute inset-0 text-[13px] leading-[20px] tracking-[-0.13px] text-[#ccc]"
+      className={cn(
+        "pointer-events-none absolute inset-0 text-[#ccc]",
+        HOME_PROMPT_EDITOR_TEXT_CLASS,
+      )}
       aria-hidden
     >
       {text}
-      <span className="ml-px inline-block h-[14px] w-px translate-y-px animate-pulse bg-[#ccc]" />
+      <span className="ml-px inline-block h-[14px] w-px animate-pulse bg-[#ccc]" />
     </span>
   )
 }
@@ -241,6 +245,39 @@ function SuggestionChip({
   )
 }
 
+function MoreSuggestionsChip({ onSelect }: { onSelect: (value: string) => void }) {
+  return (
+    <div className="group/more relative shrink-0">
+      <button
+        type="button"
+        className="flex h-8 cursor-pointer items-center gap-2 rounded-[12px] border border-solid border-[#f4f4f4] bg-white px-2 py-[6px] transition-colors duration-150 ease-out group-hover/more:border-[#e0e0e0]"
+      >
+        <span className="text-[14px] leading-[15px] text-[#aaa] transition-colors duration-150 ease-out group-hover/more:text-[#909090]">
+          +4
+        </span>
+      </button>
+
+      <div className="invisible absolute bottom-full left-0 z-20 translate-y-1 pb-2 opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/more:visible group-hover/more:translate-y-0 group-hover/more:opacity-100">
+        <div className="flex w-[208px] flex-col gap-[2px] rounded-[12px] border border-solid border-[#f4f4f4] bg-white p-[6px] shadow-[0px_12px_32px_rgba(17,17,17,0.1)]">
+          {DEMO2_MORE_SUGGESTIONS.map(({ label, emoji, prompt }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => onSelect(prompt)}
+              className="flex items-center gap-2 rounded-[8px] px-[10px] py-[8px] text-left text-[13px] leading-4 text-[#646464] transition-colors duration-150 ease-out hover:bg-[#f4f4f4] hover:text-[#202020]"
+            >
+              <span className="text-[14px] leading-none" aria-hidden>
+                {emoji}
+              </span>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function NewBadgePlusIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -256,6 +293,63 @@ function NewBadgePlusIcon({ className }: { className?: string }) {
         strokeLinejoin="round"
       />
     </svg>
+  )
+}
+
+function HomeFilterOptionIcon({
+  src,
+  flip,
+}: {
+  src: string
+  flip?: boolean
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "size-[14px] shrink-0 bg-[#969696] transition-colors duration-150 ease-out group-hover/option:bg-[#777777]",
+        "[mask-size:contain] [mask-repeat:no-repeat] [mask-position:center] [-webkit-mask-size:contain] [-webkit-mask-repeat:no-repeat] [-webkit-mask-position:center]",
+        flip && "-rotate-180 -scale-x-100",
+      )}
+      style={{
+        maskImage: `url(${src})`,
+        WebkitMaskImage: `url(${src})`,
+      }}
+    />
+  )
+}
+
+function HomeFilterOptionRow({
+  option,
+}: {
+  option: (typeof DEMO2_FILTER_OPTIONS)[number]
+}) {
+  const isFunding = option.label === "Funding"
+
+  const row = (
+    <button
+      type="button"
+      className="group/option flex w-full items-center gap-2 rounded-[8px] px-2 py-[6px] text-left transition-colors duration-150 ease-out hover:bg-[#f4f4f4]"
+    >
+      <HomeFilterOptionIcon
+        src={DEMO2_ASSETS[option.icon]}
+        flip={"flip" in option && option.flip}
+      />
+      <span className="text-[13px] leading-none tracking-[0.13px] text-[#969696] transition-colors duration-150 ease-out group-hover/option:text-[#777777]">
+        {option.label}
+      </span>
+    </button>
+  )
+
+  if (!isFunding) return row
+
+  return (
+    <div className="group/funding relative">
+      {row}
+      <div className="invisible absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 opacity-0 transition-opacity duration-150 ease-out group-hover/funding:visible group-hover/funding:opacity-100">
+        <HomeFundingFilterPanel />
+      </div>
+    </div>
   )
 }
 
@@ -557,11 +651,19 @@ export function Demo2HomePanel({
   onPromptChange,
   onRun,
   isRunShimmer = false,
+  grayShellHiding = false,
+  onGrayShellHidden,
+  homeLayoutFlying = false,
+  promptCardRef,
 }: {
   prompt: string
   onPromptChange: (value: string) => void
   onRun: () => void
   isRunShimmer?: boolean
+  grayShellHiding?: boolean
+  onGrayShellHidden?: () => void
+  homeLayoutFlying?: boolean
+  promptCardRef?: React.RefObject<HTMLDivElement | null>
 }) {
   const promptEditorRef = useRef<HomeSmartPromptHandle>(null)
   const promptBeforeImproveRef = useRef<string | null>(null)
@@ -585,6 +687,13 @@ export function Demo2HomePanel({
   const hasPrompt = prompt.trim().length > 0
   const showPromptActions = hasPrompt || isPromptTransitioning || isImproved
   const showTypingPlaceholder = !hasPrompt && !promptFocused && !isPromptTransitioning
+  const [grayShellMounted, setGrayShellMounted] = useState(true)
+
+  useEffect(() => {
+    if (!grayShellHiding && !homeLayoutFlying) {
+      setGrayShellMounted(true)
+    }
+  }, [grayShellHiding, homeLayoutFlying])
 
   useEffect(() => {
     if (isRunShimmer) setIsVoiceActive(false)
@@ -753,6 +862,15 @@ export function Demo2HomePanel({
     [onPromptChange, prompt],
   )
 
+  const handleTemplateClick = useCallback(
+    (templatePrompt: string) => {
+      resetImproveState()
+      onPromptChange(templatePrompt)
+      promptEditorRef.current?.focusAtEnd()
+    },
+    [onPromptChange],
+  )
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -761,14 +879,33 @@ export function Demo2HomePanel({
   }
 
   return (
-    <main className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-white">
-      <header className="absolute left-4 top-4 z-10">
+    <main
+      className={cn(
+        "relative flex min-h-0 min-w-0 flex-1 flex-col",
+        homeLayoutFlying ? "bg-transparent" : "bg-white",
+        isRunShimmer && "z-[1]",
+      )}
+    >
+      <header
+        className={cn(
+          "absolute left-4 top-4 z-10",
+          homeLayoutFlying && "pointer-events-none opacity-0",
+        )}
+      >
         <p className="text-[13px] font-medium leading-4 text-[#202020]">Lead search</p>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        className={cn(
+          "min-h-0 flex-1",
+          isRunShimmer ? "overflow-visible" : "overflow-y-auto",
+        )}
+      >
         <div
-          className="relative mx-auto w-full px-4 pb-10"
+          className={cn(
+            "relative mx-auto w-full px-4 pb-10",
+            isRunShimmer && "overflow-visible",
+          )}
           style={{
             maxWidth: DEMO2_SIZES.homeContentWidth,
             minHeight:
@@ -798,6 +935,8 @@ export function Demo2HomePanel({
             style={{ top: heroBlockTop }}
           >
             <div className="flex flex-col gap-2">
+              {!homeLayoutFlying ? (
+                <>
               <motion.div
                 className="flex flex-wrap gap-[6px]"
                 animate={
@@ -808,45 +947,90 @@ export function Demo2HomePanel({
                 transition={HOME_SHELL_FADE}
               >
                 <AnimatePresence mode="popLayout" initial={false}>
-                  {suggestionChips.map((chip) => (
-                    <motion.div
-                      key={chip.id}
-                      layout
-                      className="inline-flex"
-                      initial={{ opacity: 0, scale: 0.96, filter: "blur(2px)" }}
-                      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, scale: 0.96, filter: "blur(2px)" }}
-                      transition={{ duration: 0.2, ease: PROMPT_ACTION_EASE }}
-                    >
-                      <SuggestionChip
-                        label={chip.label}
-                        iconUrl={chip.iconUrl}
-                        emoji={chip.emoji}
-                        aiIcon={chip.aiIcon}
-                        onClick={() => handleSuggestionClick(chip)}
-                      />
-                    </motion.div>
-                  ))}
+                  {!hasPrompt
+                    ? DEMO2_SUGGESTION_CHIPS.map((chip) => (
+                        <motion.div
+                          key={chip.id}
+                          layout
+                          className="inline-flex"
+                          initial={{ opacity: 0, scale: 0.96, filter: "blur(2px)" }}
+                          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                          exit={{ opacity: 0, scale: 0.96, filter: "blur(2px)" }}
+                          transition={{ duration: 0.2, ease: PROMPT_ACTION_EASE }}
+                        >
+                          {chip.id === "more" ? (
+                            <MoreSuggestionsChip onSelect={handleTemplateClick} />
+                          ) : (
+                            <SuggestionChip
+                              label={chip.label}
+                              iconUrl={"iconUrl" in chip ? chip.iconUrl : undefined}
+                              emoji={"emoji" in chip ? chip.emoji : undefined}
+                              onClick={() => handleTemplateClick(chip.prompt)}
+                            />
+                          )}
+                        </motion.div>
+                      ))
+                    : suggestionChips.map((chip) => (
+                        <motion.div
+                          key={chip.id}
+                          layout
+                          className="inline-flex"
+                          initial={{ opacity: 0, scale: 0.96, filter: "blur(2px)" }}
+                          animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                          exit={{ opacity: 0, scale: 0.96, filter: "blur(2px)" }}
+                          transition={{ duration: 0.2, ease: PROMPT_ACTION_EASE }}
+                        >
+                          <SuggestionChip
+                            label={chip.label}
+                            iconUrl={chip.iconUrl}
+                            emoji={chip.emoji}
+                            aiIcon={chip.aiIcon}
+                            onClick={() => handleSuggestionClick(chip)}
+                          />
+                        </motion.div>
+                      ))}
                 </AnimatePresence>
               </motion.div>
 
               <div
-                className="flex flex-col gap-[14px] rounded-[16px] bg-[#fafafa] pb-[14px]"
-                style={{ minHeight: DEMO2_SIZES.homePromptShellHeight }}
+                className="relative flex flex-col gap-[14px] rounded-[16px] pb-[14px]"
+                style={{
+                  minHeight: DEMO2_SIZES.homePromptShellHeight,
+                  paddingBottom: 14,
+                }}
               >
-                <PromptRunShimmer active={promptShimmerActive}>
+                {grayShellMounted ? (
+                <motion.div
+                  className="pointer-events-none absolute inset-0 rounded-[16px] bg-[#fafafa]"
+                  initial={false}
+                  animate={{ opacity: grayShellHiding ? 0 : 1 }}
+                  transition={
+                    prefersReducedMotion ? { duration: 0 } : DEMO2_PROMPT_SHELL_EXIT
+                  }
+                  onAnimationComplete={() => {
+                    if (!grayShellHiding) return
+                    setGrayShellMounted(false)
+                    onGrayShellHidden?.()
+                  }}
+                  aria-hidden={grayShellHiding}
+                />
+                ) : null}
+                <div ref={promptCardRef} className="relative">
+                <PromptRunShimmer
+                  active={promptShimmerActive}
+                  className={cn(
+                    "w-full",
+                    isRunShimmer && "relative z-[60]",
+                  )}
+                >
                   <div
-                    className={cn(
-                      "flex shrink-0 flex-col rounded-[16px] bg-white p-[16px]",
-                      !promptShimmerActive &&
-                        "shadow-[0px_0px_2px_rgba(119,119,119,0.04),inset_0px_0px_0px_1px_#f4f4f4]",
-                    )}
+                    className="flex w-full shrink-0 flex-col p-[16px]"
                     style={{
                       gap: DEMO2_SIZES.homePromptCardGap,
                       minHeight: DEMO2_SIZES.homePromptCardHeight,
                     }}
                   >
-                <div className="relative shrink-0">
+                <div className="relative min-h-0 shrink-0 overflow-hidden">
                   {showTypingPlaceholder ? <TypingPlaceholder text={typingPlaceholder} /> : null}
                   <AnimatePresence mode="wait" initial={false} onExitComplete={handlePromptExitComplete}>
                     {promptVisible ? (
@@ -879,6 +1063,7 @@ export function Demo2HomePanel({
                   </AnimatePresence>
                 </div>
 
+                {!isRunShimmer ? (
                 <PromptActionButtons
                   hasPrompt={showPromptActions}
                   isImproved={isImproved}
@@ -890,8 +1075,10 @@ export function Demo2HomePanel({
                   onUndo={handleUndo}
                   onRun={onRun}
                 />
+                ) : null}
                   </div>
                 </PromptRunShimmer>
+                </div>
 
               <motion.div
                 className="group/filter relative -my-1 ml-2 w-fit"
@@ -922,38 +1109,23 @@ export function Demo2HomePanel({
                   Filter
                 </button>
 
-                <div className="invisible absolute left-0 top-full z-20 translate-y-1 pt-1 opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/filter:visible group-hover/filter:translate-y-0 group-hover/filter:opacity-100">
-                  <div className="flex w-[140px] flex-col rounded-[12px] border border-solid border-[#f7f7f7] bg-white p-1 drop-shadow-[0px_1px_2px_rgba(34,34,34,0.05)]">
+                <div className="invisible absolute left-0 top-full z-20 translate-y-1 pt-1 pr-[596px] opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/filter:visible group-hover/filter:translate-y-0 group-hover/filter:opacity-100">
+                  <div className="relative w-[140px] overflow-visible rounded-[12px] border border-solid border-[#f7f7f7] bg-white p-1 drop-shadow-[0px_1px_2px_rgba(34,34,34,0.05)]">
                     {DEMO2_FILTER_OPTIONS.map((option) => (
-                      <button
-                        key={option.label}
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-[8px] px-2 py-[6px] text-left transition-colors duration-150 ease-out hover:bg-[#f4f4f4]"
-                      >
-                        <img
-                          src={DEMO2_ASSETS[option.icon]}
-                          alt=""
-                          className={cn(
-                            "size-[14px] shrink-0",
-                            "flip" in option && option.flip && "-rotate-180 -scale-x-100",
-                          )}
-                          draggable={false}
-                        />
-                        <span className="text-[13px] leading-none tracking-[0.13px] text-[#777]">
-                          {option.label}
-                        </span>
-                      </button>
+                      <HomeFilterOptionRow key={option.label} option={option} />
                     ))}
                   </div>
                 </div>
               </motion.div>
-            </div>
+              </div>
+                </>
+              ) : null}
             </div>
 
             <motion.section
               className="flex flex-col gap-3"
               animate={
-                isRunShimmer
+                isRunShimmer || homeLayoutFlying || grayShellHiding
                   ? { opacity: 0, y: -6 }
                   : { opacity: 1, y: 0 }
               }

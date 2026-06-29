@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils"
 import { DEMO2_COMPANIES, type Demo2Company } from "./demo-2-data"
 import { ScoreBar } from "./score-bar"
 import { AnimatedSourceDotGrid } from "./animated-source-dot-grid"
-import { DEMO2_RESULTS_ENTRANCE } from "./demo-2-motion"
+import { DEMO2_RESULTS_ENTRANCE, DEMO2_ROW_ENTRANCE_DURATION_S, DEMO2_SHELL_EASE, DEMO2_TABLE_DIM } from "./demo-2-motion"
 import { ResultsNoMatchEmpty } from "./results-no-match-empty"
 import { ResultsNoMatchTemplates } from "./results-no-match-templates"
 import { DEMO2_SOURCE_TAB_POPOVERS } from "./demo-2-source-tab-data"
+import { formatScanningSourceTooltip } from "./demo-2-results-data"
 import { SourceTabPopover } from "./source-tab-popover"
 
 const SOURCE_TABS = [
@@ -36,6 +37,8 @@ const SOURCE_TABS = [
   { id: "web", label: "Web search", icon: DEMO2_ASSETS.tabWebSearch },
 ] as const
 
+const SOURCE_TABS_DIM_TABLE = new Set(["source1", "source2"])
+
 const SOURCE_TAB_BUTTON_CLASS = cn(
   DEMO2_TOOLBAR_PILL,
   "group flex items-center gap-[6px] px-2 py-[6px] transition-[background-color,border-color,box-shadow,color] duration-150 ease-out hover:border-[#ddd] hover:bg-[#fdfdfd] hover:shadow-[0px_0px_0.5px_rgba(119,119,119,0.12)]",
@@ -48,29 +51,66 @@ const SCANNING_SOURCE_TABS = [
   { id: "nick", label: "Nick", variant: 0, rotate: true },
 ] as const
 
+function ScanningSourceTooltip({
+  line1,
+  line2,
+}: {
+  line1: string
+  line2: string
+}) {
+  const reduceMotion = useReducedMotion()
+
+  return (
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15, ease: DEMO2_SHELL_EASE }}
+      className="pointer-events-none absolute left-1/2 top-full z-50 mt-[3px] -translate-x-1/2 rounded-[6px] bg-[#414349] px-2 py-[5px] text-center text-[13px] leading-normal tracking-[-0.13px] text-white"
+      role="tooltip"
+    >
+      <p className="mb-0 whitespace-nowrap">{line1}</p>
+      {line2 ? <p className="mb-0 whitespace-nowrap">{line2}</p> : null}
+    </motion.div>
+  )
+}
+
 function ScanningSourceTab({
   label,
   variant,
   rotate,
+  tooltip,
+  hovered,
+  onHoverChange,
 }: {
   label: string
   variant: 0 | 1
   rotate?: boolean
+  tooltip: { line1: string; line2: string }
+  hovered: boolean
+  onHoverChange: (hovered: boolean) => void
 }) {
   return (
     <div
-      className={cn(
-        DEMO2_TOOLBAR_PILL,
-        "flex shrink-0 items-center gap-[6px] px-2 py-[6px]",
-      )}
-      style={{ height: DEMO2_SIZES.tabHeight }}
+      className="relative"
+      onMouseEnter={() => onHoverChange(true)}
+      onMouseLeave={() => onHoverChange(false)}
     >
-      <span className="relative flex size-4 shrink-0 items-center justify-center overflow-hidden">
-        <AnimatedSourceDotGrid variant={variant} rotate={rotate} />
-      </span>
-      <span className="whitespace-nowrap text-[12px] leading-4 tracking-[-0.12px] text-[#646464]">
-        {label}
-      </span>
+      <div
+        className={cn(
+          DEMO2_TOOLBAR_PILL,
+          "flex shrink-0 cursor-default items-center gap-[6px] px-2 py-[6px]",
+        )}
+        style={{ height: DEMO2_SIZES.tabHeight }}
+      >
+        <span className="relative flex size-4 shrink-0 items-center justify-center overflow-hidden">
+          <AnimatedSourceDotGrid variant={variant} rotate={rotate} />
+        </span>
+        <span className="whitespace-nowrap text-[12px] leading-4 tracking-[-0.12px] text-[#646464]">
+          {label}
+        </span>
+      </div>
+
+      {hovered ? <ScanningSourceTooltip line1={tooltip.line1} line2={tooltip.line2} /> : null}
     </div>
   )
 }
@@ -190,11 +230,13 @@ function SourceTabButton({
       </button>
 
       {hovered && popover ? (
-        <SourceTabPopover
-          title={tab.label}
-          data={popover}
-          className="absolute left-0 top-[calc(100%+3px)] z-50"
-        />
+        <div className="absolute left-0 top-full z-50 pt-[3px]">
+          <SourceTabPopover
+            title={tab.label}
+            data={popover}
+            className="left-0"
+          />
+        </div>
       ) : null}
     </div>
   )
@@ -225,7 +267,7 @@ function ToolbarPill({
 const SEARCH_PILL_EASE = "cubic-bezier(0.22, 1, 0.36, 1)"
 
 const TOOLBAR_ACTION_LABEL_CLASS =
-  "text-[13px] font-medium leading-[14px] tracking-[-0.13px] text-[#646464]"
+  "text-[13px] font-medium leading-[14px] tracking-[-0.13px] text-[#646464] transition-colors duration-150 ease-out group-hover:text-[#323232]"
 
 function ToolbarActionIcon({ src }: { src: string }) {
   return (
@@ -839,7 +881,33 @@ function TableRow({
   )
 }
 
-const RESULTS_STAGGER_EASE = [0.22, 1, 0.36, 1] as const
+const RESULTS_STAGGER_EASE = DEMO2_SHELL_EASE
+
+function ScanningSkeletonRowEntrance({
+  index,
+  children,
+}: {
+  index: number
+  children: React.ReactNode
+}) {
+  const reduceMotion = useReducedMotion()
+
+  if (reduceMotion) return <>{children}</>
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: DEMO2_ROW_ENTRANCE_DURATION_S,
+        delay: DEMO2_RESULTS_ENTRANCE.table + index * 0.035,
+        ease: RESULTS_STAGGER_EASE,
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
 
 function TableHeader({
   columns,
@@ -899,53 +967,67 @@ function TableHeader({
   )
 }
 
-function ScanningToolbar({
-  titleSearchOpen,
-  titleSearchQuery,
-  onTitleSearchOpenChange,
-  onTitleSearchQueryChange,
+function ResultsTableFrame({
+  dimmed,
+  className,
+  children,
 }: {
-  titleSearchOpen: boolean
-  titleSearchQuery: string
-  onTitleSearchOpenChange: (open: boolean) => void
-  onTitleSearchQueryChange: (query: string) => void
+  dimmed: boolean
+  className?: string
+  children: React.ReactNode
 }) {
+  const reduceMotion = useReducedMotion()
+
   return (
-    <div className="flex h-[68px] shrink-0 items-center gap-2 border-x border-[#f4f4f4] bg-white px-5 pt-5 pb-4">
-      <SearchToolbarPill
-        value={titleSearchQuery}
-        onChange={onTitleSearchQueryChange}
-        active={titleSearchOpen}
-        onActiveChange={onTitleSearchOpenChange}
-        disabled
-      />
+    <motion.div
+      className={cn(
+        "demo2-results-table relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-x border-[#f4f4f4] bg-white",
+        className,
+      )}
+      animate={{ opacity: dimmed ? DEMO2_TABLE_DIM.opacity : 1 }}
+      transition={
+        reduceMotion
+          ? { duration: 0 }
+          : { duration: DEMO2_TABLE_DIM.duration, ease: DEMO2_TABLE_DIM.ease }
+      }
+    >
+      {children}
+    </motion.div>
+  )
+}
 
-      <ToolbarPill className="pr-2" label="Filter">
-        <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFilter} />
-        <span className={TOOLBAR_ACTION_LABEL_CLASS}>Filter</span>
-        <span className="flex h-[18px] w-[19px] shrink-0 flex-col items-center justify-center rounded-[6px] bg-[rgba(0,144,255,0.1)] px-[6px] py-[2px] text-[13px] leading-[14px] tracking-[0.13px] text-[#0090ff]">
-          3
-        </span>
-      </ToolbarPill>
+function StaggerEntranceItem({
+  index,
+  baseDelay,
+  stagger = DEMO2_RESULTS_ENTRANCE.toolbarStagger,
+  className,
+  children,
+}: {
+  index: number
+  baseDelay: number
+  stagger?: number
+  className?: string
+  children: React.ReactNode
+}) {
+  const reduceMotion = useReducedMotion()
 
-      <ToolbarPill label="Public" aria-pressed disabled>
-        <span className={TOOLBAR_ACTION_LABEL_CLASS}>Public</span>
-        <PublicToggle checked />
-      </ToolbarPill>
-
-      <div className="ml-auto flex items-center gap-2">
-        <ToolbarPill label="Find similars">
-          <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFindSimilars} />
-          <span className={cn("shrink-0 whitespace-nowrap", TOOLBAR_ACTION_LABEL_CLASS)}>
-            Find similars
-          </span>
-        </ToolbarPill>
-        <ToolbarPill label="Review">
-          <ToolbarActionIcon src={DEMO2_ASSETS.toolbarReview} />
-          <span className={TOOLBAR_ACTION_LABEL_CLASS}>Review</span>
-        </ToolbarPill>
-      </div>
-    </div>
+  return (
+    <motion.div
+      className={className}
+      initial={reduceMotion ? false : { opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={
+        reduceMotion
+          ? { duration: 0 }
+          : {
+              duration: DEMO2_RESULTS_ENTRANCE.itemDuration,
+              delay: baseDelay + index * stagger,
+              ease: DEMO2_SHELL_EASE,
+            }
+      }
+    >
+      {children}
+    </motion.div>
   )
 }
 
@@ -974,6 +1056,7 @@ function ResultsSelectionActions({ count }: { count: number }) {
 }
 
 function ResultsToolbar({
+  scanning = false,
   isPublic,
   onTogglePublic,
   titleSearchOpen,
@@ -982,6 +1065,7 @@ function ResultsToolbar({
   onTitleSearchQueryChange,
   selectedCount,
 }: {
+  scanning?: boolean
   isPublic: boolean
   onTogglePublic: () => void
   titleSearchOpen: boolean
@@ -990,53 +1074,67 @@ function ResultsToolbar({
   onTitleSearchQueryChange: (query: string) => void
   selectedCount: number
 }) {
-  const hasSelection = selectedCount > 0
+  const hasSelection = !scanning && selectedCount > 0
   const searchActive = hasSelection || titleSearchOpen
 
   return (
     <div className="flex h-[68px] shrink-0 items-center gap-2 border-x border-[#f4f4f4] bg-white px-5 pt-5 pb-4">
-      <SearchToolbarPill
-        value={titleSearchQuery}
-        onChange={onTitleSearchQueryChange}
-        active={searchActive}
-        onActiveChange={(open) => {
-          if (!hasSelection) onTitleSearchOpenChange(open)
-        }}
-        lockActive={hasSelection}
-      />
+      <StaggerEntranceItem index={0} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
+        <SearchToolbarPill
+          value={titleSearchQuery}
+          onChange={onTitleSearchQueryChange}
+          active={searchActive}
+          onActiveChange={(open) => {
+            if (!hasSelection) onTitleSearchOpenChange(open)
+          }}
+          lockActive={hasSelection}
+          disabled={scanning}
+        />
+      </StaggerEntranceItem>
 
       {hasSelection ? (
-        <ResultsSelectionActions count={selectedCount} />
+        <StaggerEntranceItem index={1} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
+          <ResultsSelectionActions count={selectedCount} />
+        </StaggerEntranceItem>
       ) : (
         <>
-          <ToolbarPill className="pr-2" label="Filter">
-            <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFilter} />
-            <span className={TOOLBAR_ACTION_LABEL_CLASS}>Filter</span>
-            <span className="flex h-[18px] w-[19px] shrink-0 flex-col items-center justify-center rounded-[6px] bg-[rgba(0,144,255,0.1)] px-[6px] py-[2px] text-[13px] leading-[14px] tracking-[0.13px] text-[#0090ff]">
-              3
-            </span>
-          </ToolbarPill>
-
-          <ToolbarPill
-            label="Toggle public visibility"
-            aria-pressed={isPublic}
-            onClick={onTogglePublic}
-          >
-            <span className={TOOLBAR_ACTION_LABEL_CLASS}>Public</span>
-            <PublicToggle checked={isPublic} />
-          </ToolbarPill>
-
-          <div className="ml-auto flex items-center gap-2">
-            <ToolbarPill label="Find similars">
-              <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFindSimilars} />
-              <span className={cn("shrink-0 whitespace-nowrap", TOOLBAR_ACTION_LABEL_CLASS)}>
-                Find similars
+          <StaggerEntranceItem index={1} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
+            <ToolbarPill className="pr-2" label="Filter" disabled={scanning}>
+              <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFilter} />
+              <span className={TOOLBAR_ACTION_LABEL_CLASS}>Filter</span>
+              <span className="flex h-[18px] w-[19px] shrink-0 flex-col items-center justify-center rounded-[6px] bg-[rgba(0,144,255,0.1)] px-[6px] py-[2px] text-[13px] leading-[14px] tracking-[0.13px] text-[#0090ff]">
+                3
               </span>
             </ToolbarPill>
-            <ToolbarPill label="Review">
-              <ToolbarActionIcon src={DEMO2_ASSETS.toolbarReview} />
-              <span className={TOOLBAR_ACTION_LABEL_CLASS}>Review</span>
+          </StaggerEntranceItem>
+
+          <StaggerEntranceItem index={2} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
+            <ToolbarPill
+              label="Toggle public visibility"
+              aria-pressed={scanning ? true : isPublic}
+              onClick={scanning ? undefined : onTogglePublic}
+              disabled={scanning}
+            >
+              <span className={TOOLBAR_ACTION_LABEL_CLASS}>Public</span>
+              <PublicToggle checked={scanning ? true : isPublic} />
             </ToolbarPill>
+          </StaggerEntranceItem>
+
+          <div className="ml-auto flex items-center gap-2">
+            <StaggerEntranceItem index={3} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
+              <ToolbarPill label="Find similars" disabled={scanning}>
+                <ToolbarActionIcon src={DEMO2_ASSETS.toolbarFindSimilars} />
+                <span className={cn("shrink-0 whitespace-nowrap", TOOLBAR_ACTION_LABEL_CLASS)}>
+                  Find similars
+                </span>
+              </ToolbarPill>
+            </StaggerEntranceItem>
+            <StaggerEntranceItem index={4} baseDelay={DEMO2_RESULTS_ENTRANCE.toolbar}>
+              <ToolbarPill label="Review" disabled={scanning}>
+                <ToolbarActionIcon src={DEMO2_ASSETS.toolbarReview} />
+                <span className={TOOLBAR_ACTION_LABEL_CLASS}>Review</span>
+              </ToolbarPill>
+            </StaggerEntranceItem>
           </div>
         </>
       )}
@@ -1063,7 +1161,7 @@ function ResultsSection({
       transition={
         reduceMotion
           ? { duration: 0 }
-          : { duration: 0.42, delay, ease: RESULTS_STAGGER_EASE }
+          : { duration: DEMO2_RESULTS_ENTRANCE.duration, delay, ease: RESULTS_STAGGER_EASE }
       }
     >
       {children}
@@ -1072,7 +1170,7 @@ function ResultsSection({
 }
 
 export function Demo2ResultsPanel({
-  prompt: _prompt,
+  prompt = "",
   openFilters: _openFilters,
   visibleRowCount,
   isSearchRunning = false,
@@ -1132,73 +1230,82 @@ export function Demo2ResultsPanel({
     : DEMO2_SIZES.tableMinWidth
   const sourcePopoverOpen =
     hoveredSourceTabId !== null && hoveredSourceTabId in DEMO2_SOURCE_TAB_POPOVERS
+  const dimResultsTable =
+    hoveredSourceTabId !== null && SOURCE_TABS_DIM_TABLE.has(hoveredSourceTabId)
   const totalCompanies = DEMO2_COMPANIES.length
   const previewSkeletonCount =
     !showScanningShell && revealedCount < totalCompanies - MAX_PREVIEW_SKELETON_ROWS
       ? Math.min(MAX_PREVIEW_SKELETON_ROWS, totalCompanies - revealedCount)
       : 0
+  const scanningSourceTooltip = formatScanningSourceTooltip(prompt)
+  const scanningTabHovered = showScanningShell && hoveredSourceTabId !== null
 
   return (
     <div
       className="flex min-h-0 min-w-0 flex-1 flex-col bg-[#fafafa] pl-0 pr-2"
     >
-      <ResultsSection delay={DEMO2_RESULTS_ENTRANCE.sourceTabs}>
-        <div
-          className={cn("mb-2 flex items-center gap-1", sourcePopoverOpen && "relative z-50")}
-        >
-          {showScanningShell
-            ? SCANNING_SOURCE_TABS.map((tab) => (
+      <div
+        className={cn(
+          "mb-2 flex items-center gap-1",
+          (sourcePopoverOpen || scanningTabHovered) && "relative z-50",
+        )}
+      >
+        {showScanningShell
+          ? SCANNING_SOURCE_TABS.map((tab, index) => (
+              <StaggerEntranceItem
+                key={tab.id}
+                index={index}
+                baseDelay={DEMO2_RESULTS_ENTRANCE.sourceTabs}
+                stagger={DEMO2_RESULTS_ENTRANCE.sourceTabStagger}
+              >
                 <ScanningSourceTab
-                  key={tab.id}
                   label={tab.label}
                   variant={tab.variant}
                   rotate={"rotate" in tab ? tab.rotate : false}
+                  tooltip={scanningSourceTooltip}
+                  hovered={hoveredSourceTabId === tab.id}
+                  onHoverChange={(open) =>
+                    setHoveredSourceTabId(open ? tab.id : null)
+                  }
                 />
-              ))
-            : SOURCE_TABS.map((tab) => (
+              </StaggerEntranceItem>
+            ))
+          : SOURCE_TABS.map((tab, index) => (
+              <StaggerEntranceItem
+                key={tab.id}
+                index={index}
+                baseDelay={DEMO2_RESULTS_ENTRANCE.sourceTabs}
+                stagger={DEMO2_RESULTS_ENTRANCE.sourceTabStagger}
+              >
                 <SourceTabButton
-                  key={tab.id}
                   tab={tab}
                   hovered={hoveredSourceTabId === tab.id}
                   onHoverChange={(open) =>
                     setHoveredSourceTabId(open ? tab.id : null)
                   }
                 />
-              ))}
-        </div>
-      </ResultsSection>
+              </StaggerEntranceItem>
+            ))}
+      </div>
 
       <div className="demo2-results-surface relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-2xl border-t border-[#f4f4f4] bg-white">
-        <ResultsSection delay={DEMO2_RESULTS_ENTRANCE.toolbar}>
-          {showScanningShell ? (
-            <ScanningToolbar
-              titleSearchOpen={titleSearchOpen}
-              titleSearchQuery={titleSearchQuery}
-              onTitleSearchOpenChange={setTitleSearchOpen}
-              onTitleSearchQueryChange={setTitleSearchQuery}
-            />
-          ) : (
-            <ResultsToolbar
-              isPublic={isPublic}
-              onTogglePublic={() => setIsPublic((value) => !value)}
-              titleSearchOpen={titleSearchOpen}
-              titleSearchQuery={titleSearchQuery}
-              onTitleSearchOpenChange={setTitleSearchOpen}
-              onTitleSearchQueryChange={setTitleSearchQuery}
-              selectedCount={selectedIds.size}
-            />
-          )}
-        </ResultsSection>
+        <ResultsToolbar
+          scanning={showScanningShell}
+          isPublic={isPublic}
+          onTogglePublic={() => setIsPublic((value) => !value)}
+          titleSearchOpen={titleSearchOpen}
+          titleSearchQuery={titleSearchQuery}
+          onTitleSearchOpenChange={setTitleSearchOpen}
+          onTitleSearchQueryChange={setTitleSearchQuery}
+          selectedCount={selectedIds.size}
+        />
 
         <ResultsSection
           delay={DEMO2_RESULTS_ENTRANCE.table}
-          className={cn(
-            "flex min-h-0 min-w-0 flex-1 flex-col transition-opacity duration-150",
-            hoveredSourceTabId !== null && "opacity-25",
-          )}
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
         >
           {showNoMatchEmpty ? (
-            <div className="demo2-results-table relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-x border-[#f4f4f4] bg-white">
+            <ResultsTableFrame dimmed={dimResultsTable}>
               <div className="min-w-0 shrink-0 overflow-x-auto px-5">
                 <div style={{ minWidth: tableMinWidth }}>
                   <TableHeader
@@ -1216,11 +1323,9 @@ export function Demo2ResultsPanel({
                   <ResultsNoMatchEmpty onStartNewSearch={onStartNewSearch ?? (() => {})} />
                 </div>
               </div>
-            </div>
+            </ResultsTableFrame>
           ) : (
-          <div
-            className="demo2-results-table relative flex min-h-0 flex-1 flex-col overflow-auto border-x border-[#f4f4f4] bg-white"
-          >
+          <ResultsTableFrame dimmed={dimResultsTable} className="overflow-auto">
             <div className="relative flex min-h-0 flex-col bg-white px-5 pb-12">
               <div
                 className="demo2-results-table-body relative flex min-h-0 flex-1 flex-col bg-white"
@@ -1235,12 +1340,13 @@ export function Demo2ResultsPanel({
                 />
                 {showScanningShell
                   ? Array.from({ length: SCANNING_SKELETON_ROWS }, (_, index) => (
-                      <TableSkeletonRow
-                        key={index}
-                        rowIndex={index}
-                        scanning
-                        opacity={getSkeletonRowOpacity(index, SCANNING_SKELETON_ROWS)}
-                      />
+                      <ScanningSkeletonRowEntrance key={index} index={index}>
+                        <TableSkeletonRow
+                          rowIndex={index}
+                          scanning
+                          opacity={getSkeletonRowOpacity(index, SCANNING_SKELETON_ROWS)}
+                        />
+                      </ScanningSkeletonRowEntrance>
                     ))
                   : (
                     <>
@@ -1258,7 +1364,7 @@ export function Demo2ResultsPanel({
                             key={company.id}
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.32, ease: RESULTS_STAGGER_EASE }}
+                            transition={{ duration: DEMO2_ROW_ENTRANCE_DURATION_S, ease: RESULTS_STAGGER_EASE }}
                           >
                             <TableRow
                               company={company}
@@ -1279,7 +1385,7 @@ export function Demo2ResultsPanel({
                   )}
               </div>
             </div>
-          </div>
+          </ResultsTableFrame>
           )}
         </ResultsSection>
 

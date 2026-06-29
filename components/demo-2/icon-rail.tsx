@@ -1,5 +1,6 @@
 "use client"
 
+import { SidebarFlashIcon, SidebarFolderIcon, SidebarSearchingIcon } from "./home-icons"
 import { DEMO2_ASSETS } from "./demo-2-assets"
 import { DEMO2_SIZES } from "./demo-2-tokens"
 import { cn } from "@/lib/utils"
@@ -95,7 +96,7 @@ export function Demo2IconRail() {
 
       <RailSection className="mt-[19px]">
         <RailButton activeBg="bg-[#f9f9f9]" label="Search">
-          <RailIcon src={DEMO2_ASSETS.railSearch} alt="" />
+          <SidebarSearchingIcon />
         </RailButton>
       </RailSection>
 
@@ -116,7 +117,7 @@ export function Demo2IconRail() {
           <RailIcon src={DEMO2_ASSETS.railGlobalSearch} alt="" />
         </RailButton>
         <RailButton label="Automations">
-          <RailIcon src={DEMO2_ASSETS.railFlash} alt="" />
+          <SidebarFlashIcon />
         </RailButton>
         <RailButton label="Flows">
           <RailIcon src={DEMO2_ASSETS.railFlow} alt="" />
@@ -148,9 +149,9 @@ export function Demo2IconRail() {
 
       <RailSection className="mt-5 gap-[2px]">
         {[0, 1, 2].map((i) => (
-          <RailButton key={i} label={`List ${i + 1}`}>
-            <RailIcon src={DEMO2_ASSETS.railFolder} alt="" />
-          </RailButton>
+            <RailButton key={i} label={`List ${i + 1}`}>
+              <SidebarFolderIcon />
+            </RailButton>
         ))}
       </RailSection>
     </aside>

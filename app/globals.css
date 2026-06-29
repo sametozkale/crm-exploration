@@ -484,20 +484,14 @@ html.light {
   [data-demo="2"] .demo2-prompt-shimmer-mask,
   [data-demo="2"] .demo2-prompt-shimmer-mask-chat {
     background: #ffffff;
-    box-shadow: none;
   }
 
   [data-demo="2"] .demo2-prompt-shimmer-mask {
-    border-radius: 15px;
+    border-radius: calc(16px - 1px);
   }
 
   [data-demo="2"] .demo2-prompt-shimmer-mask-chat {
-    border-radius: 11px;
-  }
-
-  [data-demo="2"] .demo2-prompt-shimmer-mask > *,
-  [data-demo="2"] .demo2-prompt-shimmer-mask-chat > * {
-    box-shadow: none !important;
+    border-radius: calc(12px - 1px);
   }
 
   [data-demo="2"] .demo2-skeleton-bar {

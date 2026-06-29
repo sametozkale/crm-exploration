@@ -39,7 +39,7 @@ export function AnimatedSourceDotGrid({
 }: {
   variant?: 0 | 1
   rotate?: boolean
-  /** `gray` — static neutral dots (CoT loading header). */
+  /** `gray` — neutral dots with staggered flicker (CoT loading header). */
   tone?: "blue" | "gray"
 }) {
   const pattern = SOURCE_DOT_PATTERNS[variant]
@@ -57,17 +57,15 @@ export function AnimatedSourceDotGrid({
         <span
           key={index}
           className={cn(
-            "size-[3px] rounded-full",
-            isGray ? "bg-[#d8d8d8]" : "demo2-source-dot bg-[#0090ff]",
+            "demo2-source-dot size-[3px] rounded-full",
+            isGray ? "bg-[#d8d8d8]" : "bg-[#0090ff]",
           )}
           style={
-            isGray
-              ? undefined
-              : ({
-                  "--dot-min": dot.min,
-                  animationDelay: `${dot.delay}s`,
-                  animationDuration: `${dot.duration}s`,
-                } as React.CSSProperties)
+            {
+              "--dot-min": dot.min,
+              animationDelay: `${dot.delay}s`,
+              animationDuration: `${dot.duration}s`,
+            } as React.CSSProperties
           }
         />
       ))}

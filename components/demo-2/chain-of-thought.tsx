@@ -7,7 +7,7 @@ import { DEMO2_SEARCH_RUN_STEPS, type SearchRunStepStatus } from "./search-run-s
 import type { Demo2SearchRunPhase } from "./use-demo2-search-run"
 import { cn } from "@/lib/utils"
 
-const COT_EASE = [0.22, 1, 0.36, 1] as const
+import { DEMO2_SHELL_EASE } from "./demo-2-motion"
 
 function StepCheck({ compact = false }: { compact?: boolean }) {
   return (
@@ -80,7 +80,7 @@ function CoTStepList({
         layout
         initial={reduceMotion ? false : { opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.24, ease: COT_EASE }}
+        transition={{ duration: 0.34, ease: DEMO2_SHELL_EASE }}
         className="relative flex items-start gap-2"
       >
         {row}
@@ -185,7 +185,7 @@ export function ChainOfThought({
           alt=""
           className="size-[10px]"
           animate={{ rotate: expanded ? 90 : 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.22, ease: COT_EASE }}
+          transition={{ duration: reduceMotion ? 0 : 0.32, ease: DEMO2_SHELL_EASE }}
         />
       </button>
 
@@ -200,7 +200,7 @@ export function ChainOfThought({
                 ? { opacity: 0 }
                 : { opacity: 0, height: 0, transition: { duration: 0.24 } }
             }
-            transition={{ duration: 0.28, ease: COT_EASE }}
+            transition={{ duration: 0.4, ease: DEMO2_SHELL_EASE }}
             className="overflow-hidden"
           >
             <CoTStepList steps={visibleSteps} icon="check" />

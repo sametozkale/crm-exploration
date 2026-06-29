@@ -44,6 +44,23 @@ export const DEMO2_SIZES = {
   clarificationUserBubbleMaxWidth: 568,
 } as const
 
+/** Chat prompt slot rect while sidebar is still wide (fixed layout — no DOM measure). */
+export function getDemo2ChatPromptSlotRect(
+  viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800,
+): DOMRect {
+  const left = DEMO2_SIZES.homeSidebarWidth + 8
+  const top = viewportHeight - 8 - DEMO2_SIZES.chatInputHeight - 8
+  return new DOMRect(left, top, DEMO2_SIZES.chatInputWidth, DEMO2_SIZES.chatInputHeight)
+}
+
+/** Figma 82:13429 — white prompt card at rest (1px ring + drop shadow). */
+export const DEMO2_HOME_PROMPT_CARD_IDLE =
+  "bg-[#f4f4f4] drop-shadow-[0px_0px_2px_rgba(119,119,119,0.04)]"
+
+/** Figma 142:81976 — chat follow-up input at rest (border only, no shadow). */
+export const DEMO2_CHAT_INPUT_SHELL_IDLE =
+  "rounded-[12px] border border-solid border-[#f4f4f4] bg-white"
+
 /** Clarification chat layout tokens (Figma 86/88). */
 export const DEMO2_TOKENS = {
   clarificationThreadWidth: DEMO2_SIZES.clarificationThreadWidth,

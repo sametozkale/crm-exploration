@@ -21,8 +21,14 @@ import {
 const CHIP_CLASS =
   "mx-px my-px inline-flex h-5 cursor-pointer items-center rounded-[12px] bg-[rgba(0,144,255,0.07)] px-1 text-[13px] leading-[20px] text-[#0090ff] align-baseline transition-colors hover:bg-[rgba(0,144,255,0.12)]"
 
+/** Shared prompt line metrics — keep placeholder and editor in sync. */
+export const HOME_PROMPT_EDITOR_TEXT_CLASS =
+  "m-0 block min-h-[20px] w-full px-0 pt-0 pb-px text-[13px] leading-[20px] tracking-[-0.13px] whitespace-pre-wrap break-words"
+
 export interface HomeSmartPromptHandle {
   focus: () => void
+  /** Focus editor and place caret at end of prompt text. */
+  focusAtEnd: () => void
   getElement: () => HTMLDivElement | null
 }
 
@@ -180,16 +186,18 @@ export const HomeSmartPromptEditor = forwardRef<
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const composingRef = useRef(false)
+  const pendingCaretAtEndRef = useRef(false)
   const [dropdown, setDropdown] = useState<DropdownState | null>(null)
 
   const paint = useCallback(
-    (text: string, opts: { restoreCaret?: boolean } = {}) => {
+    (text: string, opts: { restoreCaret?: boolean; caretAtEnd?: boolean } = {}) => {
       const editor = editorRef.current
       if (!editor) return
       const tokens = parsePromptTokens(text)
       const caret = opts.restoreCaret ? getCaretOffset(editor) : null
       buildEditorNodes(editor, text, tokens)
-      if (caret != null) placeCaretAtOffset(editor, caret)
+      if (opts.caretAtEnd) placeCaretAtOffset(editor, text.length)
+      else if (caret != null) placeCaretAtOffset(editor, caret)
       onHeightChange?.()
     },
     [onHeightChange],
@@ -200,7 +208,9 @@ export const HomeSmartPromptEditor = forwardRef<
     if (!editor) return
     if (readEditorText(editor) === value) return
     const focused = document.activeElement === editor
-    paint(value, { restoreCaret: focused })
+    const caretAtEnd = pendingCaretAtEndRef.current
+    if (caretAtEnd) pendingCaretAtEndRef.current = false
+    paint(value, { restoreCaret: focused && !caretAtEnd, caretAtEnd })
   }, [value, paint])
 
   useEffect(() => {
@@ -216,11 +226,21 @@ export const HomeSmartPromptEditor = forwardRef<
       focus() {
         editorRef.current?.focus()
       },
+      focusAtEnd() {
+        const editor = editorRef.current
+        if (!editor) return
+        pendingCaretAtEndRef.current = true
+        editor.focus()
+        if (readEditorText(editor) === value) {
+          pendingCaretAtEndRef.current = false
+          placeCaretAtOffset(editor, value.length)
+        }
+      },
       getElement() {
         return editorRef.current
       },
     }),
-    [],
+    [value],
   )
 
   const handleInput = () => {
@@ -314,8 +334,9 @@ export const HomeSmartPromptEditor = forwardRef<
           scheduleCloseDropdown()
         }}
         className={cn(
-          "m-0 block min-h-[20px] w-full resize-none overflow-hidden bg-transparent px-0 pt-0 pb-px text-[13px] leading-[20px] tracking-[-0.13px] outline-none",
-          "text-[#202020] caret-[#202020] whitespace-pre-wrap break-words",
+          HOME_PROMPT_EDITOR_TEXT_CLASS,
+          "resize-none overflow-hidden bg-transparent outline-none",
+          "text-[#202020] caret-[#202020]",
           readOnly && "pointer-events-none",
           className,
         )}

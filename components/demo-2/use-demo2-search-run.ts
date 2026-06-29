@@ -15,10 +15,12 @@ export function useDemo2SearchRun({
   active,
   totalRows,
   reduceMotion,
+  sessionKey = 0,
 }: {
   active: boolean
   totalRows: number
   reduceMotion: boolean | null
+  sessionKey?: number
 }) {
   const [phase, setPhase] = useState<Demo2SearchRunPhase>("running")
   const [activeStepIndex, setActiveStepIndex] = useState(0)
@@ -99,7 +101,7 @@ export function useDemo2SearchRun({
     schedule(advanceStep, DEMO2_SEARCH_STEP_MS)
 
     return clearTimers
-  }, [active, reduceMotion, totalRows])
+  }, [active, reduceMotion, totalRows, sessionKey])
 
   const stepStatuses: SearchRunStepStatus[] = DEMO2_SEARCH_RUN_STEPS.map((_, index) => {
     if (index < activeStepIndex) return "done"
