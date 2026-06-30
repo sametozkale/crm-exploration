@@ -177,19 +177,9 @@ export function inferFiltersFromPrompt(text: string): FilterQuery {
         if (rounds.includes(stage)) {
           push(makeCondition("funding_round", "$eq", stage), "funding_round")
         }
-        continue
       }
-      const employees = token.value.match(/(\d[\d,]*)\+?\s*employees?/i)
-      if (employees) {
-        push(
-          makeCondition(
-            "employees",
-            "$gte",
-            Number.parseInt(employees[1]!.replace(/,/g, ""), 10),
-          ),
-          "employees",
-        )
-      }
+      // Headcount is detected from the raw prompt below — the chip value
+      // ("50–200" / "50+") doesn't include the word "employees".
       continue
     }
 
@@ -210,6 +200,30 @@ export function inferFiltersFromPrompt(text: string): FilterQuery {
         )
       }
     }
+  }
+
+  // Headcount — "50–200 employees", "50+ employees", "200 employees".
+  const parseInt10 = (raw: string) => Number.parseInt(raw.replace(/,/g, ""), 10)
+  const headcountRange = trimmed.match(
+    /(\d[\d,]*)\s*[–—-]\s*(\d[\d,]*)\s+employees?\b/i,
+  )
+  const headcountThreshold = trimmed.match(/(\d[\d,]*)\s*\+\s*employees?\b/i)
+  const headcountExact = trimmed.match(/(\d[\d,]*)\s+employees?\b/i)
+  if (headcountRange) {
+    push(
+      makeCondition("employees", "$gte", parseInt10(headcountRange[1]!)),
+      "employees",
+    )
+  } else if (headcountThreshold) {
+    push(
+      makeCondition("employees", "$gte", parseInt10(headcountThreshold[1]!)),
+      "employees",
+    )
+  } else if (headcountExact) {
+    push(
+      makeCondition("employees", "$gte", parseInt10(headcountExact[1]!)),
+      "employees",
+    )
   }
 
   if (hasAlumniContext(trimmed)) {

@@ -13,7 +13,7 @@ const HOME_FILTER_CATEGORY: Partial<Record<AttributeSlug, string>> = {
   icp_fit: "Company",
   investors: "Funding",
   technologies: "Tech",
-  job_posts: "Company",
+  job_posts: "Jobs",
   signals: "Job signal",
   lookalike: "Similarity",
   in_crm: "Contacts",
@@ -21,7 +21,7 @@ const HOME_FILTER_CATEGORY: Partial<Record<AttributeSlug, string>> = {
 
 const HOME_FILTER_FIELD: Partial<Record<AttributeSlug, string>> = {
   funding_round: "Last funding round",
-  employees: "Headcount",
+  employees: "Employees",
   industry: "Categories",
   hq: "HQ",
   founded: "Founded",
@@ -31,7 +31,7 @@ const HOME_FILTER_FIELD: Partial<Record<AttributeSlug, string>> = {
   icp_fit: "ICP fit",
   investors: "Investors",
   technologies: "Technologies",
-  job_posts: "Company jobs",
+  job_posts: "Title",
   signals: "Signals",
   lookalike: "Similarity",
   in_crm: "In CRM",
@@ -48,21 +48,16 @@ function categoryForAttribute(slug: AttributeSlug): string {
   return "Company"
 }
 
-function fieldForAttribute(slug: AttributeSlug, value?: FilterValue): string {
-  if (slug === "job_posts" && value != null && String(value).trim()) {
-    const title = String(value).trim()
-    const label = title.charAt(0).toUpperCase() + title.slice(1)
-    return `Company jobs → ${label}`
-  }
+function fieldForAttribute(slug: AttributeSlug): string {
   return HOME_FILTER_FIELD[slug] ?? getAttributeDef(slug).label
 }
 
 export function getHomeFilterChipParts(
   attribute: AttributeSlug,
-  value?: FilterValue,
+  _value?: FilterValue,
 ): { category: string; field: string } {
   return {
     category: categoryForAttribute(attribute),
-    field: fieldForAttribute(attribute, value),
+    field: fieldForAttribute(attribute),
   }
 }
