@@ -388,7 +388,7 @@ function SavedSearchSortMenu({
                 type="button"
                 onClick={() => onChange(option.id)}
                 className={cn(
-                  "flex w-full items-center rounded-[8px] px-2 py-[6px] text-left text-[13px] leading-none tracking-[0.13px] transition-colors duration-150 ease-out hover:bg-[#f4f4f4]",
+                  "flex w-full items-center rounded-[8px] px-2 py-[6px] text-left text-[13px] leading-none tracking-[-0.13px] transition-colors duration-150 ease-out hover:bg-[#f4f4f4]",
                   selected ? "text-[#323232]" : "text-[#969696] hover:text-[#777777]",
                 )}
               >
