@@ -41,15 +41,18 @@ function leftToValue(left: number, trackWidth: number): number {
 function FundingTypePill({
   label,
   style,
+  onSelect,
 }: {
   label: string
   style: React.CSSProperties
+  onSelect?: (label: string) => void
 }) {
   return (
     <button
       type="button"
       style={style}
-      className="absolute inline-flex h-[28px] items-center rounded-[16px] border border-solid border-[#f4f4f4] bg-white px-[9px] py-[5px] text-[13px] font-normal leading-[18.2px] text-[#646464] transition-colors duration-150 ease-out hover:border-[#ececec]"
+      onClick={() => onSelect?.(label)}
+      className="absolute inline-flex h-[28px] cursor-pointer items-center rounded-[16px] border border-solid border-[#f4f4f4] bg-white px-[9px] py-[5px] text-[13px] font-normal leading-[18.2px] text-[#646464] transition-colors duration-150 ease-out hover:border-[#ececec]"
     >
       {label}
     </button>
@@ -233,7 +236,11 @@ function FundingAmountSlider({
 }
 
 /** Figma 82:13660 — opens 4px to the right of the filter dropdown, vertically centered on Funding. */
-export function HomeFundingFilterPanel() {
+export function HomeFundingFilterPanel({
+  onFundingRoundSelect,
+}: {
+  onFundingRoundSelect?: (round: string) => void
+} = {}) {
   const [minValue, setMinValue] = useState(DEFAULT_MIN)
   const [maxValue, setMaxValue] = useState(DEFAULT_MAX)
   const [minInput, setMinInput] = useState(formatAmount(DEFAULT_MIN))
@@ -292,6 +299,7 @@ export function HomeFundingFilterPanel() {
                   key={pill.label}
                   label={pill.label}
                   style={{ left: pill.left, top: pill.top }}
+                  onSelect={onFundingRoundSelect}
                 />
               ))}
             </div>

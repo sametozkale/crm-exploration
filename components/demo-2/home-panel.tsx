@@ -4,14 +4,15 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { DEMO2_ASSETS } from "./demo-2-assets"
 import {
-  DEMO2_FILTER_OPTIONS,
   DEMO2_MORE_SUGGESTIONS,
   DEMO2_NEW_COUNT_ACTIONS,
   DEMO2_PROMPT_PLACEHOLDERS,
   DEMO2_SAVED_SEARCHES,
   DEMO2_SAVED_SEARCH_CONTEXT_ACTIONS,
+  DEMO2_SAVED_SEARCH_SORT_OPTIONS,
   DEMO2_SUGGESTION_CHIPS,
   type Demo2SavedSearch,
+  type Demo2SavedSearchSortId,
 } from "./demo-2-home-data"
 import { DEMO2_SIZES } from "./demo-2-tokens"
 import { HomeChevronDownIcon, HomeEqualizerIcon, HomeImproveIcon, HomeSearchListIcon } from "./home-icons"
@@ -22,8 +23,10 @@ import {
   getPromptSuggestions,
   type PromptSuggestion,
 } from "@/lib/prompt-suggestions"
+import type { FilterQuery } from "@/lib/filter-query"
 import { DEMO2_HOME_SHELL_FADE, DEMO2_PROMPT_SHELL_COLLAPSE } from "./demo-2-motion"
-import { HomeFundingFilterPanel } from "./home-funding-filter-panel"
+import { HomeFilterBar } from "./home-filter-bar"
+import { useDelayedHover } from "./use-delayed-hover"
 import { PromptRunShimmer } from "./prompt-run-shimmer"
 import {
   ContextMenu,
@@ -296,63 +299,6 @@ function NewBadgePlusIcon({ className }: { className?: string }) {
   )
 }
 
-function HomeFilterOptionIcon({
-  src,
-  flip,
-}: {
-  src: string
-  flip?: boolean
-}) {
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "size-[14px] shrink-0 bg-[#969696] transition-colors duration-150 ease-out group-hover/option:bg-[#777777]",
-        "[mask-size:contain] [mask-repeat:no-repeat] [mask-position:center] [-webkit-mask-size:contain] [-webkit-mask-repeat:no-repeat] [-webkit-mask-position:center]",
-        flip && "-rotate-180 -scale-x-100",
-      )}
-      style={{
-        maskImage: `url(${src})`,
-        WebkitMaskImage: `url(${src})`,
-      }}
-    />
-  )
-}
-
-function HomeFilterOptionRow({
-  option,
-}: {
-  option: (typeof DEMO2_FILTER_OPTIONS)[number]
-}) {
-  const isFunding = option.label === "Funding"
-
-  const row = (
-    <button
-      type="button"
-      className="group/option flex w-full items-center gap-2 rounded-[8px] px-2 py-[6px] text-left transition-colors duration-150 ease-out hover:bg-[#f4f4f4]"
-    >
-      <HomeFilterOptionIcon
-        src={DEMO2_ASSETS[option.icon]}
-        flip={"flip" in option && option.flip}
-      />
-      <span className="text-[13px] leading-none tracking-[0.13px] text-[#969696] transition-colors duration-150 ease-out group-hover/option:text-[#777777]">
-        {option.label}
-      </span>
-    </button>
-  )
-
-  if (!isFunding) return row
-
-  return (
-    <div className="group/funding relative">
-      {row}
-      <div className="invisible absolute left-[calc(100%+8px)] top-1/2 z-30 -translate-y-1/2 opacity-0 transition-opacity duration-150 ease-out group-hover/funding:visible group-hover/funding:opacity-100">
-        <HomeFundingFilterPanel />
-      </div>
-    </div>
-  )
-}
-
 function NewCountBadge({ count }: { count: number }) {
   return (
     <div
@@ -390,6 +336,72 @@ function NewCountBadge({ count }: { count: number }) {
   )
 }
 
+function SavedSearchSortMenu({
+  value,
+  onChange,
+}: {
+  value: Demo2SavedSearchSortId
+  onChange: (next: Demo2SavedSearchSortId) => void
+}) {
+  const sortHover = useDelayedHover()
+  const activeLabel =
+    DEMO2_SAVED_SEARCH_SORT_OPTIONS.find((option) => option.id === value)?.label ??
+    "Last editing"
+
+  return (
+    <div
+      className="relative shrink-0"
+      onMouseEnter={sortHover.onEnter}
+      onMouseLeave={sortHover.onLeave}
+    >
+      <button
+        type="button"
+        className="flex cursor-pointer items-center gap-[6px] rounded-[16px] border-[0.5px] border-solid border-[#f4f4f4] px-[10px] py-[4px] shadow-[0px_0px_1px_0px_rgba(119,119,119,0.15)] transition-colors duration-150 ease-out hover:bg-[#fafafa]"
+      >
+        <span className="relative size-3 shrink-0 overflow-hidden">
+          <img
+            src={DEMO2_ASSETS.homeSort}
+            alt=""
+            className="block size-full max-w-none"
+            draggable={false}
+          />
+        </span>
+        <span className="whitespace-nowrap text-[13px] leading-normal text-[#838383]">
+          {activeLabel}
+        </span>
+      </button>
+
+      <div
+        className={cn(
+          "absolute right-0 top-full z-20 pt-1 transition-opacity duration-150 ease-out",
+          sortHover.open
+            ? "pointer-events-auto opacity-100"
+            : "pointer-events-none opacity-0",
+        )}
+      >
+        <div className="min-w-[152px] rounded-[12px] border border-solid border-[#f7f7f7] bg-white p-1 drop-shadow-[0px_1px_2px_rgba(34,34,34,0.05)]">
+          {DEMO2_SAVED_SEARCH_SORT_OPTIONS.map((option) => {
+            const selected = option.id === value
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onChange(option.id)}
+                className={cn(
+                  "flex w-full items-center rounded-[8px] px-2 py-[6px] text-left text-[13px] leading-none tracking-[0.13px] transition-colors duration-150 ease-out hover:bg-[#f4f4f4]",
+                  selected ? "text-[#323232]" : "text-[#969696] hover:text-[#777777]",
+                )}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SavedSearchRow({
   search,
   onClone,
@@ -407,7 +419,7 @@ function SavedSearchRow({
           tabIndex={0}
           className="group flex h-[62px] w-full cursor-pointer items-start gap-3 rounded-[12px] bg-transparent p-3 text-left transition-colors duration-150 ease-out hover:bg-[#fafafa] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0090ff]/30"
         >
-          <div className="flex size-[38px] shrink-0 items-center justify-center rounded-[8px] bg-[rgba(0,144,255,0.07)] transition-colors duration-150 ease-out group-hover:bg-white">
+          <div className="flex size-[38px] shrink-0 items-center justify-center rounded-[8px] bg-[rgba(0,144,255,0.07)]">
             <HomeSearchListIcon />
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-[6px]">
@@ -424,7 +436,7 @@ function SavedSearchRow({
                   <span className="h-2 w-px bg-[#ededed]" aria-hidden />
                 ) : null}
                 <img
-                  src={DEMO2_ASSETS.homeAvatar}
+                  src={search.editorAvatar ?? DEMO2_ASSETS.homeAvatar}
                   alt=""
                   className="size-4 rounded-full object-cover"
                   draggable={false}
@@ -438,7 +450,9 @@ function SavedSearchRow({
                 </span>
                 {search.newCount != null ? <NewCountBadge count={search.newCount} /> : null}
               </div>
-              <span className="text-[12px] leading-4 text-[#aaa]">{search.timeAgo}</span>
+              <span className="hidden text-[12px] leading-4 text-[#aaa] transition-opacity duration-150 ease-out group-hover:inline">
+                {search.timeAgo}
+              </span>
             </div>
           </div>
         </div>
@@ -650,6 +664,8 @@ export function Demo2HomePanel({
   prompt,
   onPromptChange,
   onRun,
+  filterQuery,
+  onFilterQueryChange,
   isRunShimmer = false,
   grayShellHiding = false,
   onGrayShellHidden,
@@ -659,6 +675,8 @@ export function Demo2HomePanel({
   prompt: string
   onPromptChange: (value: string) => void
   onRun: () => void
+  filterQuery: FilterQuery
+  onFilterQueryChange: (query: FilterQuery) => void
   isRunShimmer?: boolean
   grayShellHiding?: boolean
   onGrayShellHidden?: () => void
@@ -677,6 +695,8 @@ export function Demo2HomePanel({
   const prefersReducedMotion = useReducedMotion()
   const [promptFocused, setPromptFocused] = useState(false)
   const [savedSearchesOpen, setSavedSearchesOpen] = useState(true)
+  const [savedSearchSort, setSavedSearchSort] =
+    useState<Demo2SavedSearchSortId>("last_editing")
   const [savedSearches, setSavedSearches] = useState(DEMO2_SAVED_SEARCHES)
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [isImproved, setIsImproved] = useState(false)
@@ -1102,35 +1122,10 @@ export function Demo2HomePanel({
                 }
                 transition={HOME_SHELL_FADE}
               >
-                <div className="group/filter relative w-fit">
-                <button
-                  type="button"
-                  className="inline-flex h-6 cursor-pointer items-center gap-[6px] rounded-[8px] px-2 text-[13px] leading-4 text-[#969696] transition-colors duration-150 ease-out hover:bg-[#eeeeee] hover:text-[#777]"
-                >
-                  <svg
-                    viewBox="0 0 11.5 11.5"
-                    fill="none"
-                    className="size-3 shrink-0"
-                    aria-hidden
-                  >
-                    <path
-                      d="M3.91684 6.04522C2.46524 4.95994 1.43078 3.76618 0.865936 3.09506C0.691087 2.88731 0.633795 2.73527 0.599347 2.46747C0.48139 1.55047 0.422411 1.09197 0.691296 0.795987C0.96018 0.500003 1.43568 0.500003 2.38668 0.500003H9.1133C10.0643 0.500003 10.5398 0.500003 10.8087 0.795987C11.0776 1.09197 11.0186 1.55047 10.9006 2.46747C10.8662 2.73528 10.8089 2.88732 10.634 3.09506C10.0684 3.76703 9.03187 4.96292 7.57732 6.04957C7.44573 6.14788 7.35899 6.3081 7.3429 6.48582C7.1988 8.07865 7.06593 8.9511 6.98322 9.39245C6.84972 10.105 5.83934 10.5337 5.29849 10.9162C4.97652 11.1439 4.58583 10.8728 4.54411 10.5204C4.46457 9.84857 4.31476 8.48372 4.15123 6.48582C4.13654 6.30647 4.04949 6.14438 3.91684 6.04522Z"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  Filter
-                </button>
-
-                <div className="invisible absolute left-0 top-full z-20 translate-y-1 pt-1 pr-[100px] opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/filter:visible group-hover/filter:translate-y-0 group-hover/filter:opacity-100">
-                  <div className="relative w-[140px] overflow-visible rounded-[12px] border border-solid border-[#f7f7f7] bg-white p-1 drop-shadow-[0px_1px_2px_rgba(34,34,34,0.05)]">
-                    {DEMO2_FILTER_OPTIONS.map((option) => (
-                      <HomeFilterOptionRow key={option.label} option={option} />
-                    ))}
-                  </div>
-                </div>
-                </div>
+                <HomeFilterBar
+                  filterQuery={filterQuery}
+                  onFilterQueryChange={onFilterQueryChange}
+                />
               </motion.div>
               </motion.div>
                 </>
@@ -1163,22 +1158,10 @@ export function Demo2HomePanel({
                 />
               </button>
               {savedSearchesOpen ? (
-                <button
-                  type="button"
-                  className="flex cursor-pointer items-center gap-[6px] rounded-[16px] border-[0.5px] border-solid border-[#f4f4f4] px-[10px] py-[4px] shadow-[0px_0px_1px_0px_rgba(119,119,119,0.15)]"
-                >
-                  <span className="relative size-3 shrink-0 overflow-hidden">
-                    <img
-                      src={DEMO2_ASSETS.homeSort}
-                      alt=""
-                      className="block size-full max-w-none"
-                      draggable={false}
-                    />
-                  </span>
-                  <span className="whitespace-nowrap text-[13px] leading-normal text-[#838383]">
-                    Last editing
-                  </span>
-                </button>
+                <SavedSearchSortMenu
+                  value={savedSearchSort}
+                  onChange={setSavedSearchSort}
+                />
               ) : null}
             </div>
 

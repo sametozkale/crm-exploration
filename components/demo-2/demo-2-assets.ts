@@ -98,6 +98,8 @@ export const DEMO2_ASSETS = {
   homeFilterTech: `${HOME}/filter-tech.svg`,
   homeFilterJobSignal: `${HOME}/filter-jobsignal.svg`,
   homeFilterContacts: `${HOME}/filter-contacts.svg`,
+  homeFilterChipArrow: `${HOME}/filter-chip-arrow.svg`,
+  homeFilterChipClose: `${HOME}/filter-chip-close.svg`,
   homeFundingCalendar: `${HOME}/calendar-03.svg`,
   homeFundingSliderGrip: `${HOME}/slider-grip.svg`,
   clarificationSearch: `${CLARIFICATION}/search.svg`,

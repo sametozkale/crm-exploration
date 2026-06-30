@@ -2,7 +2,10 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { AttributeSlug } from "@/lib/filter-attributes"
+import { createEmptyQuery, type FilterQuery } from "@/lib/filter-query"
 import { isDemo2PromptRelevant } from "@/lib/demo2-prompt-match"
+import { syncPromptFiltersInQuery } from "@/lib/prompt-filters"
 import {
   analyzePromptClarity,
   buildClarificationScenario,
@@ -37,6 +40,8 @@ export function ProgressiveSearch() {
     null,
   )
   const [openFiltersOnResults, setOpenFiltersOnResults] = useState(false)
+  const [filterQuery, setFilterQuery] = useState<FilterQuery>(() => createEmptyQuery())
+  const promptAutoFilterAttrsRef = useRef<Set<AttributeSlug>>(new Set())
   const [isRunShimmer, setIsRunShimmer] = useState(false)
   const [isPromptLayoutFlying, setIsPromptLayoutFlying] = useState(false)
   const [homeExiting, setHomeExiting] = useState(false)
@@ -65,6 +70,21 @@ export function ProgressiveSearch() {
   }, [])
 
   useEffect(() => clearRunTimers, [clearRunTimers])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setFilterQuery((prev) => {
+        const { query, autoAttributes } = syncPromptFiltersInQuery(
+          prev,
+          prompt,
+          promptAutoFilterAttrsRef.current,
+        )
+        promptAutoFilterAttrsRef.current = autoAttributes
+        return query
+      })
+    }, 250)
+    return () => window.clearTimeout(timer)
+  }, [prompt])
 
   const finishLayoutFlight = useCallback(() => {
     setShowFlightOverlay(false)
@@ -162,6 +182,8 @@ export function ProgressiveSearch() {
     setResolvedPrompt("")
     setClarificationCase(null)
     setOpenFiltersOnResults(false)
+    setFilterQuery(createEmptyQuery())
+    promptAutoFilterAttrsRef.current = new Set()
     setHomeExiting(false)
     finishLayoutFlight()
     setHasMatchingResults(true)
@@ -214,6 +236,8 @@ export function ProgressiveSearch() {
                 prompt={prompt}
                 onPromptChange={setPrompt}
                 onRun={handleRun}
+                filterQuery={filterQuery}
+                onFilterQueryChange={setFilterQuery}
                 isRunShimmer={isRunShimmer || homeExiting || isGrayShellHiding}
                 grayShellHiding={isGrayShellHiding}
                 onGrayShellHidden={handleGrayShellHidden}

@@ -75,6 +75,17 @@ export const DEMO2_NEW_COUNT_ACTIONS = [
   { label: "Quick preview", icon: "homeNewBadgeQuickPreview" },
 ] as const
 
+/** Saved searches list — sort dropdown (Figma home header). */
+export const DEMO2_SAVED_SEARCH_SORT_OPTIONS = [
+  { id: "last_editing", label: "Last editing" },
+  { id: "created_at", label: "Created at" },
+  { id: "last_run", label: "Last run" },
+  { id: "name", label: "Name" },
+] as const
+
+export type Demo2SavedSearchSortId =
+  (typeof DEMO2_SAVED_SEARCH_SORT_OPTIONS)[number]["id"]
+
 /** Figma 104:15010 — saved search row context menu */
 export const DEMO2_SAVED_SEARCH_CONTEXT_ACTIONS = [
   { id: "clone", label: "Clone search", icon: "homeSavedSearchClone" },
@@ -113,6 +124,7 @@ export type Demo2SavedSearch = {
   results: number
   newCount?: number
   filterCount?: number
+  editorAvatar?: string
   timeAgo: string
 }
 
@@ -123,13 +135,14 @@ export const DEMO2_SAVED_SEARCHES: Demo2SavedSearch[] = [
     results: 32,
     newCount: 8,
     filterCount: 3,
-    timeAgo: "2h ago",
+    timeAgo: "19 min ago",
   },
   {
     id: "untitled",
     title: "Untitled search",
     results: 56,
     newCount: 5,
+    editorAvatar: "/demo-2/tabs/marius-avatar.png",
     timeAgo: "2h ago",
   },
   {
@@ -137,7 +150,7 @@ export const DEMO2_SAVED_SEARCHES: Demo2SavedSearch[] = [
     title: "YC companies",
     results: 89,
     newCount: 12,
-    filterCount: 3,
-    timeAgo: "2h ago",
+    filterCount: 1,
+    timeAgo: "1 week ago",
   },
 ]
