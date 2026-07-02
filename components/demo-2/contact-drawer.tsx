@@ -49,6 +49,22 @@ function FooterNavChevron({ direction }: { direction: "up" | "down" }) {
 const FOOTER_NAV_BUTTON_CLASS =
   "group/footer-nav-btn flex size-[29px] shrink-0 items-center justify-center rounded-[8px] border-[0.5px] border-solid border-[#f2f2f2] bg-white drop-shadow-[0px_0px_0.5px_rgba(119,119,119,0.12)] transition-colors duration-150 ease-out hover:border-[#eee]"
 
+/** Figma copy-01 (61:22152) — 16px tile, 8.33% inset, #777 glyph. */
+function ContactCopyIcon() {
+  return (
+    <span className="relative size-4 shrink-0 overflow-clip" aria-hidden>
+      <span className="absolute inset-[8.33%]">
+        <img
+          src="/demo-2/contact-drawer/icon-copy.svg"
+          alt=""
+          className="block size-full max-w-none"
+          draggable={false}
+        />
+      </span>
+    </span>
+  )
+}
+
 function ContactDrawerFooter({
   canGoPrevious,
   canGoNext,
@@ -208,30 +224,37 @@ function EnrichRow({
 
   return (
     <div className="flex w-full items-center justify-between rounded-[12px] border border-solid border-[#f4f4f4] px-4 py-3">
-      <div className="flex items-start gap-3">
+      <div className={cn("flex gap-3", enriched ? "items-center" : "items-start")}>
         <div className="flex shrink-0 rounded-[8px] bg-[rgba(119,119,119,0.07)] p-1.5">
           <img src={icon} alt="" className="size-3 object-contain" draggable={false} />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-start gap-1">
-            <p className="text-[13px] font-medium leading-normal text-[#323232]">
-              {enriched ? value : title}
-            </p>
-            {!enriched ? (
+        {enriched ? (
+          <p className="text-[13px] font-medium leading-normal text-[#323232]">{value}</p>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-start gap-1">
+              <p className="text-[13px] font-medium leading-normal text-[#323232]">{title}</p>
               <span
                 className="rounded-[6px] bg-[rgba(0,205,113,0.07)] px-1 py-0.5 text-[10px] font-medium tracking-[-0.2px] text-[#00cd71]"
                 style={SALT}
               >
                 {credits}
               </span>
-            ) : null}
-          </div>
-          {!enriched ? (
+            </div>
             <p className="text-[12px] leading-4 tracking-[-0.24px] text-[#838383]">{hint}</p>
-          ) : null}
-        </div>
+          </div>
+        )}
       </div>
-      {!enriched ? (
+      {enriched ? (
+        <button
+          type="button"
+          aria-label="Copy to clipboard"
+          onClick={() => void navigator.clipboard.writeText(value)}
+          className="flex shrink-0 cursor-pointer items-center justify-center rounded-[8px] bg-[rgba(119,119,119,0.07)] p-1.5 transition-colors duration-150 ease-out hover:bg-[rgba(119,119,119,0.12)]"
+        >
+          <ContactCopyIcon />
+        </button>
+      ) : (
         <button
           type="button"
           onClick={() => setEnriched(true)}
@@ -240,7 +263,7 @@ function EnrichRow({
           <img src={enrichIcon} alt="" className="size-3 object-contain" draggable={false} />
           Enrich
         </button>
-      ) : null}
+      )}
     </div>
   )
 }

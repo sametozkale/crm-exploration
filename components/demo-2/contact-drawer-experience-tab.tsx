@@ -85,18 +85,10 @@ function WorkExperienceCard({
     <motion.div
       layout
       className={cn(
-        "flex w-full flex-col rounded-[12px] border border-solid bg-white p-4",
+        "flex w-full flex-col rounded-[12px] border border-solid bg-white p-4 transition-colors duration-150 ease-out",
         hovered ? "border-[#eee]" : "border-[#f4f4f4]",
       )}
-      animate={{
-        boxShadow: hovered
-          ? "0px 2px 8px rgba(34, 34, 34, 0.04)"
-          : "0px 0px 0px rgba(34, 34, 34, 0)",
-      }}
-      transition={{
-        ...layoutTransition,
-        boxShadow: { duration: 0.22, ease: DEMO2_SHELL_EASE },
-      }}
+      transition={layoutTransition}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
