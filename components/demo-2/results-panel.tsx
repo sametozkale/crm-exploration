@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, useReducedMotion } from "framer-motion"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { DEMO2_ASSETS, DEMO2_TOOLBAR_PILL } from "./demo-2-assets"
 import { DEMO2_SIZES } from "./demo-2-tokens"
 import { cn } from "@/lib/utils"
@@ -14,6 +14,17 @@ import { ResultsNoMatchTemplates } from "./results-no-match-templates"
 import { DEMO2_SOURCE_TAB_POPOVERS } from "./demo-2-source-tab-data"
 import { formatScanningSourceTooltip } from "./demo-2-results-data"
 import { SourceTabPopover } from "./source-tab-popover"
+import { CompanyDrawer, CompanyResultsOverlay } from "./company-drawer"
+import {
+  getDrawerNavigableCompanyIdsInTableOrder,
+  hasCompanyDrawerProfile,
+} from "./company-drawer-data"
+import { ContactDrawer } from "./contact-drawer"
+import { getDrawerNavigableContactKeysInTableOrder } from "./contact-drawer-data"
+import {
+  getCompanyTableContact,
+  type Demo2TableContact,
+} from "./demo-2-results-contacts"
 
 const SOURCE_TABS = [
   {
@@ -118,15 +129,15 @@ function ScanningSourceTab({
 const COLUMNS = [
   { key: "select", label: "", width: 40, stickyLeft: 0 },
   { key: "company", label: "Company", width: 200, stickyLeft: 40 },
-  { key: "industry", label: "Industry", width: 200 },
   { key: "founded", label: "Founded year", width: 100 },
   { key: "employees", label: "Employee amount", width: 140 },
   { key: "location", label: "Location", width: 200 },
   { key: "score", label: "Score", width: 200 },
   { key: "website", label: "Website URL", width: 200 },
-  { key: "description", label: "Description", width: 400 },
-  { key: "funding", label: " Last funding type", width: 200, headerIcon: true },
   { key: "contacts", label: " Contacts", width: 200, headerIcon: true },
+  { key: "description", label: "Description", width: 400 },
+  { key: "industry", label: "Industry", width: 176 },
+  { key: "funding", label: " Last funding type", width: 200, headerIcon: true },
   { key: "jobs", label: " Jobs", width: 200, headerIcon: true },
   { key: "stickyPad", label: "", width: 42 },
 ] as const
@@ -135,15 +146,15 @@ const COLUMNS = [
 const SCANNING_COLUMNS = [
   { key: "select", label: "", width: 40, stickyLeft: 0 },
   { key: "company", label: "Company", width: 200, stickyLeft: 40 },
-  { key: "industry", label: "Industry", width: 200 },
   { key: "founded", label: "Founded year", width: 100 },
   { key: "employees", label: "Employee amount", width: 140 },
   { key: "location", label: "Location", width: 200 },
   { key: "website", label: "Website URL", width: 200 },
+  { key: "contacts", label: " Contacts", width: 200, headerIcon: true },
   { key: "description", label: "Description", width: 400 },
+  { key: "industry", label: "Industry", width: 176 },
   { key: "funding", label: " Last funding type", width: 200, headerIcon: true },
   { key: "fundingDate", label: " Last funding date", width: 200, headerIcon: true },
-  { key: "contacts", label: " Contacts", width: 200, headerIcon: true },
   { key: "jobs", label: " Jobs", width: 200, headerIcon: true },
   { key: "stickyPad", label: "", width: 42 },
 ] as const
@@ -501,6 +512,65 @@ function FundingPill({ label }: { label: string }) {
   )
 }
 
+/** Figma 279:30446 / 279:30470 — contact pill; hover 283:33623. */
+function ContactLabel({
+  contact,
+  onClick,
+}: {
+  contact: Demo2TableContact
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
+      className={cn(
+        "inline-flex max-w-full cursor-pointer items-center gap-[6px] rounded-[10px] border border-solid border-[#f0f0f0] bg-white py-px pl-[7px] text-left transition-colors duration-150 ease-out hover:border-[#eee] hover:bg-[#f9f9f9]",
+        contact.starred ? "pr-[4px]" : "pr-[7px]",
+      )}
+    >
+      <img
+        src={contact.avatar}
+        alt=""
+        className="size-4 shrink-0 rounded-full object-cover"
+        draggable={false}
+      />
+      <span className="truncate text-[13px] leading-6 tracking-[-0.13px] text-[#323232]">
+        {contact.name}
+      </span>
+      {contact.starred ? (
+        <span className="flex size-[18px] shrink-0 items-center justify-center rounded-[6px] bg-[rgba(0,205,113,0.12)] p-1">
+          <img
+            src="/demo-2/results/contacts/contact-star.svg"
+            alt=""
+            className="size-[10px]"
+            draggable={false}
+          />
+        </span>
+      ) : null}
+    </button>
+  )
+}
+
+function ContactsCell({
+  companyId,
+  onContactClick,
+}: {
+  companyId: string
+  onContactClick: (companyId: string) => void
+}) {
+  const contact = getCompanyTableContact(companyId)
+
+  return (
+    <div className="flex h-9 items-center px-[10px]">
+      <ContactLabel contact={contact} onClick={() => onContactClick(companyId)} />
+    </div>
+  )
+}
+
 function CompanyLogo({ company }: { company: Demo2Company }) {
   if (company.logoUrl) {
     return (
@@ -739,26 +809,26 @@ function TableSkeletonRow({
         <GridCell width={200} stickyLeft={40}>
           <SkeletonCompanyCell delayMs={baseDelay} />
         </GridCell>
-        <GridCell width={200}>
-          <SkeletonBar width={SKELETON_BAR_WIDTHS.industry} delayMs={baseDelay + 40} />
-        </GridCell>
         <GridCell width={100}>
-          <SkeletonBar width={SKELETON_BAR_WIDTHS.founded} delayMs={baseDelay + 80} />
+          <SkeletonBar width={SKELETON_BAR_WIDTHS.founded} delayMs={baseDelay + 40} />
         </GridCell>
         <GridCell width={140}>
-          <SkeletonBar width={SKELETON_BAR_WIDTHS.employees} delayMs={baseDelay + 120} />
+          <SkeletonBar width={SKELETON_BAR_WIDTHS.employees} delayMs={baseDelay + 80} />
         </GridCell>
         <GridCell width={200}>
-          <SkeletonBar width={SKELETON_BAR_WIDTHS.location} delayMs={baseDelay + 160} />
+          <SkeletonBar width={SKELETON_BAR_WIDTHS.location} delayMs={baseDelay + 120} />
         </GridCell>
         <GridCell width={200}>
-          <SkeletonBar width={SKELETON_BAR_WIDTHS.website} delayMs={baseDelay + 200} />
-        </GridCell>
-        <GridCell width={400}>
-          <SkeletonBar width={SKELETON_BAR_WIDTHS.description} delayMs={baseDelay + 240} />
+          <SkeletonBar width={SKELETON_BAR_WIDTHS.website} delayMs={baseDelay + 160} />
         </GridCell>
         <GridCell width={200}>
           <div className="h-9" />
+        </GridCell>
+        <GridCell width={400}>
+          <SkeletonBar width={SKELETON_BAR_WIDTHS.description} delayMs={baseDelay + 200} />
+        </GridCell>
+        <GridCell width={176}>
+          <SkeletonBar width={SKELETON_BAR_WIDTHS.industry} delayMs={baseDelay + 240} />
         </GridCell>
         <GridCell width={200}>
           <div className="h-9" />
@@ -787,29 +857,29 @@ function TableSkeletonRow({
       <GridCell width={200} stickyLeft={40}>
         <SkeletonCompanyCell delayMs={baseDelay} />
       </GridCell>
-      <GridCell width={200}>
-        <SkeletonBar width={SKELETON_BAR_WIDTHS.industry} delayMs={baseDelay + 40} />
-      </GridCell>
       <GridCell width={100}>
-        <SkeletonBar width={SKELETON_BAR_WIDTHS.founded} delayMs={baseDelay + 80} />
+        <SkeletonBar width={SKELETON_BAR_WIDTHS.founded} delayMs={baseDelay + 40} />
       </GridCell>
       <GridCell width={140}>
-        <SkeletonBar width={SKELETON_BAR_WIDTHS.employees} delayMs={baseDelay + 120} />
+        <SkeletonBar width={SKELETON_BAR_WIDTHS.employees} delayMs={baseDelay + 80} />
       </GridCell>
       <GridCell width={200}>
-        <SkeletonBar width={SKELETON_BAR_WIDTHS.location} delayMs={baseDelay + 160} />
+        <SkeletonBar width={SKELETON_BAR_WIDTHS.location} delayMs={baseDelay + 120} />
       </GridCell>
       <GridCell width={200}>
-        <SkeletonScoreBar delayMs={baseDelay + 200} />
+        <SkeletonScoreBar delayMs={baseDelay + 160} />
       </GridCell>
       <GridCell width={200}>
-        <SkeletonBar width={SKELETON_BAR_WIDTHS.website} delayMs={baseDelay + 240} />
-      </GridCell>
-      <GridCell width={400}>
-        <SkeletonBar width={SKELETON_BAR_WIDTHS.description} delayMs={baseDelay + 280} />
+        <SkeletonBar width={SKELETON_BAR_WIDTHS.website} delayMs={baseDelay + 200} />
       </GridCell>
       <GridCell width={200}>
         <div className="h-9" />
+      </GridCell>
+      <GridCell width={400}>
+        <SkeletonBar width={SKELETON_BAR_WIDTHS.description} delayMs={baseDelay + 240} />
+      </GridCell>
+      <GridCell width={176}>
+        <SkeletonBar width={SKELETON_BAR_WIDTHS.industry} delayMs={baseDelay + 280} />
       </GridCell>
       <GridCell width={200}>
         <div className="h-9" />
@@ -826,15 +896,22 @@ function TableRow({
   company,
   selected,
   onToggleSelect,
+  onOpenCompany,
+  onOpenContact,
 }: {
   company: Demo2Company
   selected: boolean
   onToggleSelect: () => void
+  onOpenCompany: () => void
+  onOpenContact: (companyId: string) => void
 }) {
   return (
     <div className="group/row demo2-table-row flex border-b border-solid border-[#f4f4f4] bg-white">
       <GridCell width={40} stickyLeft={0}>
-        <div className="flex h-9 items-center justify-center">
+        <div
+          className="flex h-9 items-center justify-center"
+          onClick={(event) => event.stopPropagation()}
+        >
           <RowCheckbox
             checked={selected}
             onChange={onToggleSelect}
@@ -843,23 +920,21 @@ function TableRow({
         </div>
       </GridCell>
       <GridCell width={200} stickyLeft={40}>
-        <div className="flex h-9 items-center justify-between px-[10px]">
+        <button
+          type="button"
+          onClick={onOpenCompany}
+          className="flex h-9 w-full cursor-pointer items-center justify-between px-[10px] text-left transition-colors duration-150 ease-out hover:bg-[#fafafa]"
+        >
           <div className="flex min-w-0 items-center gap-[8px]">
             <CompanyLogo company={company} />
             <span className="truncate text-[13px] font-medium leading-9 text-[#202020]">
               {company.name}
             </span>
           </div>
-          <button
-            type="button"
-            className="flex w-[47px] shrink-0 cursor-pointer items-center justify-center rounded-[8px] border border-solid border-[#f4f4f4] bg-white px-2 py-[5px] text-[11px] font-medium leading-3 tracking-[0.11px] text-[#969696] opacity-0 shadow-[0px_1px_2px_rgba(34,34,34,0.05)] group-hover/row:opacity-100"
-          >
+          <span className="flex w-[47px] shrink-0 items-center justify-center rounded-[8px] border border-solid border-[#f4f4f4] bg-white px-2 py-[5px] text-[11px] font-medium leading-3 tracking-[0.11px] text-[#969696] opacity-0 shadow-[0px_1px_2px_rgba(34,34,34,0.05)] group-hover/row:opacity-100">
             OPEN
-          </button>
-        </div>
-      </GridCell>
-      <GridCell width={200}>
-        <CellText>{company.industry}</CellText>
+          </span>
+        </button>
       </GridCell>
       <GridCell width={100}>
         <CellText className="tabular-nums">{company.foundedYear ?? ""}</CellText>
@@ -885,14 +960,17 @@ function TableRow({
           {company.website}
         </a>
       </GridCell>
+      <GridCell width={200}>
+        <ContactsCell companyId={company.id} onContactClick={onOpenContact} />
+      </GridCell>
       <GridCell width={400}>
         <CellText>{company.description ?? ""}</CellText>
       </GridCell>
-      <GridCell width={200}>
-        {company.lastFundingType ? <FundingPill label={company.lastFundingType} /> : null}
+      <GridCell width={176}>
+        <CellText>{company.industry}</CellText>
       </GridCell>
       <GridCell width={200}>
-        <FindActionCell label=" Find contacts" />
+        {company.lastFundingType ? <FundingPill label={company.lastFundingType} /> : null}
       </GridCell>
       <GridCell width={200}>
         <FindActionCell label=" Find jobs" />
@@ -1220,6 +1298,10 @@ export function Demo2ResultsPanel({
   const [titleSearchOpen, setTitleSearchOpen] = useState(false)
   const [titleSearchQuery, setTitleSearchQuery] = useState("")
   const [hoveredSourceTabId, setHoveredSourceTabId] = useState<string | null>(null)
+  const [companyDrawerOpen, setCompanyDrawerOpen] = useState(false)
+  const [drawerCompanyId, setDrawerCompanyId] = useState("c02")
+  const [contactDrawerOpen, setContactDrawerOpen] = useState(false)
+  const [drawerContactKey, setDrawerContactKey] = useState("c02")
 
   const normalizedTitleQuery = titleSearchQuery.trim().toLowerCase()
   const matchesTitleSearch = (company: Demo2Company) =>
@@ -1269,6 +1351,70 @@ export function Demo2ResultsPanel({
       : 0
   const scanningSourceTooltip = formatScanningSourceTooltip(prompt)
   const scanningTabHovered = showScanningShell && hoveredSourceTabId !== null
+
+  const drawerNavigableIds = useMemo(() => {
+    const visibleIds = DEMO2_COMPANIES.filter(
+      (company, index) =>
+        index < revealedCount && matchesTitleSearch(company),
+    ).map((company) => company.id)
+    return getDrawerNavigableCompanyIdsInTableOrder(visibleIds)
+  }, [revealedCount, normalizedTitleQuery])
+
+  const drawerNavIndex = drawerNavigableIds.indexOf(drawerCompanyId)
+
+  const contactNavigableKeys = useMemo(() => {
+    const visibleIds = DEMO2_COMPANIES.filter(
+      (company, index) =>
+        index < revealedCount && matchesTitleSearch(company),
+    ).map((company) => company.id)
+    return getDrawerNavigableContactKeysInTableOrder(visibleIds)
+  }, [revealedCount, normalizedTitleQuery])
+
+  const contactNavIndex = contactNavigableKeys.indexOf(drawerContactKey)
+
+  const closeDrawers = () => {
+    setCompanyDrawerOpen(false)
+    setContactDrawerOpen(false)
+  }
+
+  const openCompanyDrawer = (company: Demo2Company) => {
+    const nextId = hasCompanyDrawerProfile(company.id)
+      ? company.id
+      : (drawerNavigableIds[0] ?? "c02")
+    setDrawerCompanyId(nextId)
+    setContactDrawerOpen(false)
+    setCompanyDrawerOpen(true)
+  }
+
+  const openContactDrawer = (companyId: string) => {
+    setDrawerContactKey(companyId)
+    setCompanyDrawerOpen(false)
+    setContactDrawerOpen(true)
+  }
+
+  const goToPreviousDrawerCompany = () => {
+    if (drawerNavIndex > 0) {
+      setDrawerCompanyId(drawerNavigableIds[drawerNavIndex - 1]!)
+    }
+  }
+
+  const goToNextDrawerCompany = () => {
+    if (drawerNavIndex >= 0 && drawerNavIndex < drawerNavigableIds.length - 1) {
+      setDrawerCompanyId(drawerNavigableIds[drawerNavIndex + 1]!)
+    }
+  }
+
+  const goToPreviousContact = () => {
+    if (contactNavIndex > 0) {
+      setDrawerContactKey(contactNavigableKeys[contactNavIndex - 1]!)
+    }
+  }
+
+  const goToNextContact = () => {
+    if (contactNavIndex >= 0 && contactNavIndex < contactNavigableKeys.length - 1) {
+      setDrawerContactKey(contactNavigableKeys[contactNavIndex + 1]!)
+    }
+  }
 
   return (
     <div
@@ -1408,6 +1554,8 @@ export function Demo2ResultsPanel({
                               company={company}
                               selected={selectedIds.has(company.id)}
                               onToggleSelect={() => toggleRow(company.id)}
+                              onOpenCompany={() => openCompanyDrawer(company)}
+                              onOpenContact={openContactDrawer}
                             />
                           </motion.div>
                         )
@@ -1434,6 +1582,33 @@ export function Demo2ResultsPanel({
             </div>
           </div>
         ) : null}
+
+        <CompanyResultsOverlay
+          open={companyDrawerOpen || contactDrawerOpen}
+          onClose={closeDrawers}
+        />
+        <CompanyDrawer
+          open={companyDrawerOpen}
+          companyId={drawerCompanyId}
+          canGoPrevious={drawerNavIndex > 0}
+          canGoNext={
+            drawerNavIndex >= 0 && drawerNavIndex < drawerNavigableIds.length - 1
+          }
+          onPrevious={goToPreviousDrawerCompany}
+          onNext={goToNextDrawerCompany}
+          onClose={() => setCompanyDrawerOpen(false)}
+        />
+        <ContactDrawer
+          open={contactDrawerOpen}
+          contactKey={drawerContactKey}
+          canGoPrevious={contactNavIndex > 0}
+          canGoNext={
+            contactNavIndex >= 0 && contactNavIndex < contactNavigableKeys.length - 1
+          }
+          onPrevious={goToPreviousContact}
+          onNext={goToNextContact}
+          onClose={() => setContactDrawerOpen(false)}
+        />
       </div>
     </div>
   )

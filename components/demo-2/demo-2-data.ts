@@ -53,11 +53,20 @@ export const DEMO2_COMPANIES: Demo2Company[] = COMPANIES.map(mapCompanyToDemo2).
 export function scoreBarColors(score: number): string[] {
   const green = "#05d052"
   const yellow = "#fed047"
+  const oneBar = "#FF7A7A"
+  const twoBar = "#FFB03A"
   const empty = "#eee"
 
   const filled =
     score >= 93 ? 5 : score >= 80 ? 4 : score >= 73 ? 3 : score >= 58 ? 2 : 1
-  const active = score >= 80 ? green : yellow
+  const active =
+    filled === 1
+      ? oneBar
+      : filled === 2
+        ? twoBar
+        : score >= 80
+          ? green
+          : yellow
 
   return Array.from({ length: 5 }, (_, i) => (i < filled ? active : empty))
 }

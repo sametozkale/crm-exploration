@@ -1,0 +1,50 @@
+<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="14" height="14" fill="#F5F5F5"/>
+<g id="Iteration #2 - Redesign of right panel - Financials" clip-path="url(#clip0_40_45)">
+<rect width="1512" height="982" transform="translate(-1242.5 -334.5)" fill="#FAFAFA"/>
+<g id="Frame 1618869237" filter="url(#filter0_d_40_45)">
+<g clip-path="url(#clip1_40_45)">
+<rect x="-302.5" y="-284.5" width="560" height="928" rx="12" fill="white"/>
+<g id="Frame 1618869235">
+<g id="Container (InsightScale)">
+<g id="Container">
+<mask id="path-2-inside-1_40_45" fill="white">
+<path d="M-17 -5.5C-17 -12.1274 -11.6274 -17.5 -5 -17.5H220.5C227.127 -17.5 232.5 -12.1274 232.5 -5.5V70.5C232.5 77.1274 227.127 82.5 220.5 82.5H-5C-11.6274 82.5 -17 77.1274 -17 70.5V-5.5Z"/>
+</mask>
+<path d="M-17 -5.5C-17 -12.1274 -11.6274 -17.5 -5 -17.5H220.5C227.127 -17.5 232.5 -12.1274 232.5 -5.5V70.5C232.5 77.1274 227.127 82.5 220.5 82.5H-5C-11.6274 82.5 -17 77.1274 -17 70.5V-5.5Z" fill="url(#paint0_linear_40_45)"/>
+<path d="M-5 -17.5V-16.5H220.5V-17.5V-18.5H-5V-17.5ZM232.5 -5.5H231.5V70.5H232.5H233.5V-5.5H232.5ZM220.5 82.5V81.5H-5V82.5V83.5H220.5V82.5ZM-17 70.5H-16V-5.5H-17H-18V70.5H-17ZM-5 82.5V81.5C-11.0751 81.5 -16 76.5751 -16 70.5H-17H-18C-18 77.6797 -12.1797 83.5 -5 83.5V82.5ZM232.5 70.5H231.5C231.5 76.5751 226.575 81.5 220.5 81.5V82.5V83.5C227.68 83.5 233.5 77.6797 233.5 70.5H232.5ZM220.5 -17.5V-16.5C226.575 -16.5 231.5 -11.5751 231.5 -5.5H232.5H233.5C233.5 -12.6797 227.68 -18.5 220.5 -18.5V-17.5ZM-5 -17.5V-18.5C-12.1797 -18.5 -18 -12.6797 -18 -5.5H-17H-16C-16 -11.5751 -11.0751 -16.5 -5 -16.5V-17.5Z" fill="#D1FAE5" fill-opacity="0.5" mask="url(#path-2-inside-1_40_45)"/>
+<g id="Container_2">
+<g id="Icon">
+<path id="Vector" d="M12.8346 4.0835L7.8763 9.04183L4.95964 6.12516L1.16797 9.91683" stroke="#00CD71" stroke-width="1.16667" stroke-linecap="round" stroke-linejoin="round"/>
+<path id="Vector_2" d="M9.33203 4.0835H12.832V7.5835" stroke="#00CD71" stroke-width="1.16667" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_40_45" x="-306.5" y="-286.5" width="568" height="936" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="2"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0.1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_40_45"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_40_45" result="shape"/>
+</filter>
+<linearGradient id="paint0_linear_40_45" x1="-17" y1="-17.5" x2="52.0655" y2="154.818" gradientUnits="userSpaceOnUse">
+<stop stop-color="#ECFDF5"/>
+<stop offset="1" stop-color="white"/>
+</linearGradient>
+<clipPath id="clip0_40_45">
+<rect width="1512" height="982" fill="white" transform="translate(-1242.5 -334.5)"/>
+</clipPath>
+<clipPath id="clip1_40_45">
+<rect x="-302.5" y="-284.5" width="560" height="928" rx="12" fill="white"/>
+</clipPath>
+</defs>
+</svg>

@@ -1,0 +1,49 @@
+<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="12" height="12" fill="#F5F5F5"/>
+<g id="Iteration #2 - Redesign of right panel - Signals" clip-path="url(#clip0_40_45)">
+<rect width="1512" height="982" transform="translate(-986 -431)" fill="#FAFAFA"/>
+<g id="Frame 1618869237" filter="url(#filter0_d_40_45)">
+<g clip-path="url(#clip1_40_45)">
+<rect x="-46" y="-381" width="560" height="928" rx="12" fill="white"/>
+<g id="Frame 1618869235">
+<g id="Frame 1618869232">
+<g id="Frame 1618869248">
+<g id="Frame 1618869206">
+<rect x="-21.5" y="-17.5" width="511" height="61" rx="11.5" stroke="#F4F4F4"/>
+<g id="Frame 1618869242">
+<g id="Frame 1618869223">
+<rect x="-6" y="-6" width="24" height="24" rx="8" fill="#00CD71" fill-opacity="0.07"/>
+<g id="location-user-01">
+<g id="elements">
+<path id="Vector" d="M6.59887 4H5.40113C3.67918 4 2.51821 5.7903 3.19652 7.39968C3.29101 7.62387 3.5078 7.76923 3.74767 7.76923H4.16946C4.31163 7.76923 4.43555 7.86762 4.47003 8.00786L5.01303 10.2164C5.12625 10.6769 5.53317 11 6 11C6.46683 11 6.87375 10.6769 6.98697 10.2164L7.52997 8.00786C7.56445 7.86762 7.68837 7.76923 7.83054 7.76923H8.25233C8.4922 7.76923 8.70899 7.62387 8.80348 7.39968C9.48179 5.7903 8.32082 4 6.59887 4Z" stroke="#00CD71"/>
+<circle id="Ellipse 1547" cx="6" cy="2.5" r="1.5" stroke="#00CD71"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_40_45" x="-50" y="-383" width="568" height="936" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="2"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0.1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_40_45"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_40_45" result="shape"/>
+</filter>
+<clipPath id="clip0_40_45">
+<rect width="1512" height="982" fill="white" transform="translate(-986 -431)"/>
+</clipPath>
+<clipPath id="clip1_40_45">
+<rect x="-46" y="-381" width="560" height="928" rx="12" fill="white"/>
+</clipPath>
+</defs>
+</svg>

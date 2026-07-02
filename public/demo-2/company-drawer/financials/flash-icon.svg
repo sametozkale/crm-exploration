@@ -1,0 +1,57 @@
+<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="14" height="14" fill="#F5F5F5"/>
+<g id="Iteration #2 - Redesign of right panel - Financials" clip-path="url(#clip0_40_45)">
+<rect width="1512" height="982" transform="translate(-973 -836.5)" fill="#FAFAFA"/>
+<g id="Frame 1618869237" filter="url(#filter0_d_40_45)">
+<g clip-path="url(#clip1_40_45)">
+<rect x="-33" y="-786.5" width="560" height="928" rx="12" fill="white"/>
+<g id="Frame 1618869235">
+<g id="Frame 1618869231">
+<g id="Container">
+<g id="Container_2">
+<g id="Container_3">
+<g id="Container_4" filter="url(#filter1_d_40_45)">
+<path d="M-9 7C-9 -1.83656 -1.83656 -9 7 -9C15.8366 -9 23 -1.83656 23 7C23 15.8366 15.8366 23 7 23C-1.83656 23 -9 15.8366 -9 7Z" fill="#EBF6FF" shape-rendering="crispEdges"/>
+<g id="flash">
+<g id="elements">
+<path id="Vector" d="M3.04966 6.60868L7.13197 1.36864C7.45124 0.958821 8.04967 1.21389 8.04967 1.75979V5.81564C8.04967 6.14264 8.28436 6.40774 8.57386 6.40774H10.5594C11.0105 6.40774 11.2509 7.00851 10.9529 7.391L6.87063 12.631C6.55136 13.0409 5.95293 12.7858 5.95293 12.2399V8.18404C5.95293 7.85703 5.71825 7.59194 5.42875 7.59194H3.44317C2.99212 7.59194 2.75168 6.99117 3.04966 6.60868Z" stroke="#0090FF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_40_45" x="-37" y="-788.5" width="568" height="936" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="2"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0.1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_40_45"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_40_45" result="shape"/>
+</filter>
+<filter id="filter1_d_40_45" x="-13" y="-13" width="40" height="40" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feMorphology radius="4" operator="dilate" in="SourceAlpha" result="effect1_dropShadow_40_45"/>
+<feOffset/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.878431 0 0 0 0 0.905882 0 0 0 0 1 0 0 0 1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_40_45"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_40_45" result="shape"/>
+</filter>
+<clipPath id="clip0_40_45">
+<rect width="1512" height="982" fill="white" transform="translate(-973 -836.5)"/>
+</clipPath>
+<clipPath id="clip1_40_45">
+<rect x="-33" y="-786.5" width="560" height="928" rx="12" fill="white"/>
+</clipPath>
+</defs>
+</svg>

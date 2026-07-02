@@ -1,0 +1,53 @@
+<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="12" height="12" fill="#F5F5F5"/>
+<g id="Iteration #2 - Redesign of right panel - Signals" clip-path="url(#clip0_40_45)">
+<rect width="1512" height="982" transform="translate(-986 -361)" fill="#FAFAFA"/>
+<g id="Frame 1618869237" filter="url(#filter0_d_40_45)">
+<g clip-path="url(#clip1_40_45)">
+<rect x="-46" y="-311" width="560" height="928" rx="12" fill="white"/>
+<g id="Frame 1618869235">
+<g id="Frame 1618869232">
+<g id="Frame 1618869248">
+<g id="Frame 1618869205">
+<rect x="-21.5" y="-17.5" width="511" height="61" rx="11.5" stroke="#F4F4F4"/>
+<g id="Frame 1618869242">
+<g id="Frame 1618869223">
+<rect x="-6" y="-6" width="24" height="24" rx="8" fill="#0090FF" fill-opacity="0.07"/>
+<g id="money-receive-circle" clip-path="url(#clip2_40_45)">
+<g id="elements">
+<path id="Vector" d="M7 1.10002C6.67689 1.03443 6.34247 1 6 1C3.23858 1 1 3.23858 1 6C1 8.76142 3.23858 11 6 11C8.76142 11 11 8.76142 11 6C11 5.65753 10.9656 5.32311 10.9 5" stroke="#0090FF" stroke-linecap="round"/>
+<path id="Vector_2" d="M11.3497 1.35714C11.5459 1.16279 11.5474 0.84621 11.353 0.650044C11.1586 0.453878 10.8421 0.452409 10.6459 0.646763L10.9978 1.00195L11.3497 1.35714ZM8.98364 3.38844L9.07083 2.8961V2.8961L8.98364 3.38844ZM8.61142 3.0161L9.10377 2.92899L9.10377 2.92899L8.61142 3.0161ZM10.741 3.99983C11.0172 4.00361 11.2441 3.78284 11.2478 3.50672C11.2516 3.2306 11.0308 3.0037 10.7547 2.99992L10.7479 3.49988L10.741 3.99983ZM8.99995 1.2451C8.99616 0.96898 8.76924 0.748222 8.49312 0.752019C8.21701 0.755816 7.99625 0.982731 8.00005 1.25885L8.5 1.25197L8.99995 1.2451ZM8.72681 3.25197L9.07872 3.60716L11.3497 1.35714L10.9978 1.00195L10.6459 0.646763L8.3749 2.89678L8.72681 3.25197ZM8.98364 3.38844L9.07083 2.8961C9.0696 2.89588 9.07211 2.89618 9.07692 2.89875C9.08175 2.90134 9.08722 2.90533 9.09228 2.91075L8.72681 3.25197L8.36134 3.59319C8.5037 3.74567 8.691 3.84439 8.89645 3.88078L8.98364 3.38844ZM8.72681 3.25197L9.09228 2.91075C9.09677 2.91556 9.09989 2.92038 9.10184 2.92433C9.10378 2.92827 9.10398 2.93017 9.10377 2.92899L8.61142 3.0161L8.11906 3.1032C8.15158 3.28699 8.23403 3.45684 8.36134 3.59319L8.72681 3.25197ZM8.98364 3.38844L8.89645 3.88078C9.4157 3.97274 10.3252 3.99414 10.741 3.99983L10.7479 3.49988L10.7547 2.99992C10.3184 2.99395 9.49495 2.97121 9.07083 2.8961L8.98364 3.38844ZM8.5 1.25197L8.00005 1.25885C8.00577 1.6747 8.02722 2.58405 8.11906 3.1032L8.61142 3.0161L9.10377 2.92899C9.02873 2.50483 9.00595 1.68139 8.99995 1.2451L8.5 1.25197Z" fill="#0090FF"/>
+<path id="Vector_3" d="M6 4.5C5.44772 4.5 5 4.83579 5 5.25C5 5.66421 5.44772 6 6 6C6.55228 6 7 6.33579 7 6.75C7 7.16421 6.55228 7.5 6 7.5M6 4.5C6.43541 4.5 6.80582 4.7087 6.9431 5M6 4.5V4M6 7.5C5.56459 7.5 5.19418 7.2913 5.0569 7M6 7.5V8" stroke="#0090FF" stroke-linecap="round"/>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_40_45" x="-50" y="-313" width="568" height="936" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="2"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0 0.133333 0 0 0 0.1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_40_45"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_40_45" result="shape"/>
+</filter>
+<clipPath id="clip0_40_45">
+<rect width="1512" height="982" fill="white" transform="translate(-986 -361)"/>
+</clipPath>
+<clipPath id="clip1_40_45">
+<rect x="-46" y="-311" width="560" height="928" rx="12" fill="white"/>
+</clipPath>
+<clipPath id="clip2_40_45">
+<rect width="12" height="12" fill="white"/>
+</clipPath>
+</defs>
+</svg>

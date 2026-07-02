@@ -32,9 +32,9 @@ export const DEMO2_SIZES = {
   tabHeight: 28,
   toolbarPillHeight: 32,
   tableRowHeight: 36,
-  tableMinWidth: 2282,
+  tableMinWidth: 2258,
   /** Figma 219:17246 — scanning table (no score, + funding date) */
-  scanningTableMinWidth: 2122,
+  scanningTableMinWidth: 2098,
   iconSm: 12,
   iconMd: 14,
   iconLg: 16,
